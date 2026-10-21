@@ -1,0 +1,376 @@
+import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
+import Reveal from '../pages/ScrollReveal.jsx'
+import { birr } from '../utils/currency.js'
+
+/* Shared building blocks so every page speaks the same luxury visual language. */
+
+/* Money is always written "840 Birr" (number first, currency after). Use birr(x) or <Money value={x} /> everywhere. */
+export function Money({ value, className = '' }) {
+  return <span className={className}>{birr(value)}</span>
+}
+
+export const PAGE = 'mx-auto w-full max-w-[1240px] px-4 sm:px-8 lg:px-12'
+
+export const INPUT =
+  'min-h-12 w-full rounded-xl border border-stone-300 bg-stone-50/80 px-4 py-3 text-base text-stone-900 outline-none transition duration-300 placeholder:text-stone-400 hover:border-stone-400 focus:border-amber-500 focus:bg-white focus:ring-4 focus:ring-amber-400/20'
+
+export const BTN =
+  'inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-full border-0 bg-gradient-to-b from-amber-200 via-amber-400 to-amber-500 px-7 py-3 text-sm font-bold tracking-wide text-emerald-950 shadow-lg shadow-amber-600/25 transition duration-300 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-amber-500/40 active:translate-y-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0'
+
+export const BTN_OUTLINE =
+  'inline-flex min-h-10 cursor-pointer items-center justify-center whitespace-nowrap rounded-full border border-emerald-900/25 bg-white px-5 py-2 text-sm font-semibold text-emerald-900 transition duration-300 hover:border-amber-500 hover:bg-amber-50 hover:text-emerald-950 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800'
+
+export function Field({ id, label, optional, as: Tag = 'input', className = '', children, ...props }) {
+  return (
+    <div className={`flex min-w-0 flex-col gap-1.5 ${className}`}>
+      <label htmlFor={id} className="text-[13px] font-bold tracking-wide text-stone-800">
+        {label}
+        {optional && <span className="font-normal text-stone-500"> (optional)</span>}
+      </label>
+      <Tag id={id} className={INPUT} {...props}>
+        {children}
+      </Tag>
+    </div>
+  )
+}
+
+const TONES = {
+  green: 'bg-emerald-50 text-emerald-800 ring-1 ring-emerald-600/20',
+  amber: 'bg-amber-50 text-amber-900 ring-1 ring-amber-500/30',
+  stone: 'bg-stone-100 text-stone-600 ring-1 ring-stone-300/60',
+}
+
+export function Badge({ tone = 'stone', children }) {
+  return (
+    <span className={`inline-flex items-center whitespace-nowrap rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-wider ${TONES[tone]}`}>
+      {children}
+    </span>
+  )
+}
+
+export function Notice({ tone = 'green', children }) {
+  const style =
+    tone === 'green'
+      ? 'border-emerald-500 bg-emerald-50 text-emerald-900'
+      : 'border-amber-400 bg-amber-50 text-amber-900'
+  return (
+    <div role="status" className={`mb-6 rounded-xl border-l-4 px-5 py-4 text-sm font-medium leading-relaxed shadow-sm ${style}`}>
+      {children}
+    </div>
+  )
+}
+
+export function Empty({ children }) {
+  return (
+    <div className="rounded-2xl border border-dashed border-amber-400/50 bg-gradient-to-b from-white to-amber-50/40 px-6 py-14 text-center text-sm leading-relaxed text-stone-500">
+      {children}
+    </div>
+  )
+}
+
+export function Card({ children, className = '' }) {
+  return (
+    <div className={`rounded-2xl border border-emerald-950/10 bg-white p-5 shadow-[0_10px_40px_-18px_rgba(3,31,23,.25)] sm:p-7 ${className}`}>{children}</div>
+  )
+}
+
+/* Dark hero band that opens every workspace page. */
+export function PageHeader({ kicker, title, text, tag }) {
+  return (
+    <div className="relative overflow-hidden bg-[#031f17] text-white">
+      <div
+        aria-hidden="true"
+        className="absolute inset-0 bg-[radial-gradient(70%_120%_at_88%_0%,rgba(251,191,36,.24),transparent_60%),radial-gradient(60%_90%_at_0%_100%,rgba(16,185,129,.25),transparent_70%)]"
+      />
+      <div
+        aria-hidden="true"
+        className="absolute inset-0 opacity-[.07] [background-image:linear-gradient(30deg,#fff_1px,transparent_1px),linear-gradient(150deg,#fff_1px,transparent_1px)] [background-size:44px_76px]"
+      />
+      <div aria-hidden="true" className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-amber-300/80 to-transparent" />
+      <div className={`${PAGE} relative pb-28 pt-14 sm:pb-32 sm:pt-20`}>
+        <Reveal>
+          <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
+            <div className="max-w-2xl">
+              <span className="inline-flex items-center gap-3 text-[11px] font-bold uppercase tracking-[0.32em] text-amber-300">
+                <span className="h-px w-10 bg-amber-300/70" aria-hidden="true" />
+                {kicker}
+              </span>
+              <h1 className="mt-4 font-serif text-5xl font-semibold leading-[1.02] tracking-tight sm:text-6xl lg:text-7xl">{title}</h1>
+              <p className="mt-5 max-w-xl text-base leading-8 text-emerald-100/75">{text}</p>
+            </div>
+            {tag && (
+              <span className="self-start whitespace-nowrap rounded-full border border-amber-300/50 bg-amber-300/10 px-5 py-2 text-[11px] font-bold uppercase tracking-[0.25em] text-amber-300 backdrop-blur">
+                {tag}
+              </span>
+            )}
+          </div>
+        </Reveal>
+      </div>
+    </div>
+  )
+}
+
+/* Stat cards that overlap the header band. */
+export function Stats({ children, cols = 'grid-cols-2 sm:grid-cols-3' }) {
+  return <div className={`${PAGE} relative -mt-14 grid gap-3 sm:gap-5 ${cols}`}>{children}</div>
+}
+
+export function Stat({ label, value, note, accent, className = '', delay = 0, onClick }) {
+  return (
+    <Reveal delay={delay} className={className}>
+      <div
+        role={onClick ? 'button' : undefined}
+        tabIndex={onClick ? 0 : undefined}
+        onClick={onClick}
+        onKeyDown={onClick ? (event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onClick() } } : undefined}
+        className={`group relative h-full overflow-hidden rounded-2xl border border-emerald-950/10 bg-white p-4 text-left shadow-[0_20px_50px_-20px_rgba(3,31,23,.35)] sm:p-6 ${onClick ? 'cursor-pointer transition duration-300 hover:-translate-y-1 hover:border-amber-400/60 hover:shadow-2xl focus-visible:outline-2 focus-visible:outline-emerald-800' : ''}`}
+      >
+        <span aria-hidden="true" className="absolute inset-x-0 top-0 h-[3px] bg-gradient-to-r from-amber-300 via-amber-500 to-amber-300" />
+        <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-stone-500">{label}</div>
+        <div className={`mt-3 font-serif text-4xl font-semibold leading-none sm:text-5xl ${accent ? 'text-amber-600' : 'text-emerald-950'}`}>
+          {value}
+          {note && <span className="ml-2 font-sans text-xs font-medium tracking-normal text-stone-500">{note}</span>}
+        </div>
+      </div>
+    </Reveal>
+  )
+}
+
+export function BookingAnalytics({ bookings, columns, getKey, totalMode = 'trip' }) {
+  const [fromDate, setFromDate] = useState('')
+  const [toDate, setToDate] = useState('')
+  const [period, setPeriod] = useState('custom')
+  const [sort, setSort] = useState('highest')
+  const paymentTotal = (booking) => {
+    if (booking.paymentStatus !== 'Paid' && booking.paymentStatus !== 'Refunded') return 0
+    const amount = Number(booking.amountBirr || 0)
+    return Math.max(0, amount - (booking.paymentStatus === 'Refunded' ? Number(booking.refundAmount || 0) : 0))
+  }
+  const bookingValue = (booking) => totalMode === 'payments' ? paymentTotal(booking) : Number(booking.price || 0)
+  const filteredBookings = bookings.filter((booking) => {
+    if (fromDate && toDate && fromDate > toDate) return false
+    const date = new Date((totalMode === 'payments' && booking.paidAt) || booking.createdAt || booking.journeyDate || 0)
+    if (Number.isNaN(date.getTime())) return false
+    const day = [date.getFullYear(), String(date.getMonth() + 1).padStart(2, '0'), String(date.getDate()).padStart(2, '0')].join('-')
+    return (!fromDate || day >= fromDate) && (!toDate || day <= toDate)
+  }).sort((first, second) => (sort === 'highest' ? bookingValue(second) - bookingValue(first) : bookingValue(first) - bookingValue(second)))
+  const totalValue = filteredBookings.reduce((total, booking) => total + bookingValue(booking), 0)
+  const summaryFrom = fromDate || 'Any date'
+  const summaryTo = toDate || 'Any date'
+  const selectClass = 'min-h-11 rounded-xl border border-stone-300 bg-stone-50 px-3 outline-none transition focus:border-amber-500 focus:ring-4 focus:ring-amber-400/20'
+
+  function selectPeriod(value) {
+    setPeriod(value)
+    if (value === 'custom') return
+    if (value === 'all') {
+      setFromDate('')
+      setToDate('')
+      return
+    }
+
+    const today = new Date()
+    const start = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+    const end = new Date(start)
+    if (value === 'week') {
+      const daysSinceMonday = (start.getDay() + 6) % 7
+      start.setDate(start.getDate() - daysSinceMonday)
+      end.setDate(start.getDate() + 6)
+    } else if (value === 'month') {
+      start.setDate(1)
+      end.setMonth(start.getMonth() + 1, 0)
+    } else if (value === 'year') {
+      start.setMonth(0, 1)
+      end.setMonth(11, 31)
+    }
+    const toDateValue = (date) => [
+      date.getFullYear(),
+      String(date.getMonth() + 1).padStart(2, '0'),
+      String(date.getDate()).padStart(2, '0'),
+    ].join('-')
+    setFromDate(toDateValue(start))
+    setToDate(toDateValue(end))
+  }
+
+  return (
+    <div className="grid gap-4">
+      <div className="grid gap-3 rounded-2xl border border-emerald-950/10 bg-white p-5 shadow-[0_10px_40px_-18px_rgba(3,31,23,.25)] sm:grid-cols-2 lg:grid-cols-3">
+        {totalMode === 'payments' && (
+          <label className="grid gap-1.5 text-[13px] font-bold text-stone-700">
+            Quick period
+            <select aria-label="Payment report period" className={selectClass} value={period} onChange={(event) => selectPeriod(event.target.value)}>
+              <option value="custom">Custom dates</option>
+              <option value="all">Any date</option>
+              <option value="week">This week</option>
+              <option value="month">This month</option>
+              <option value="year">This year</option>
+            </select>
+          </label>
+        )}
+        <label className="grid gap-1.5 text-[13px] font-bold text-stone-700">From date<input aria-label="Bookings from date" className={selectClass} type="date" max={toDate || undefined} value={fromDate} onChange={(event) => { setPeriod('custom'); setFromDate(event.target.value) }} /></label>
+        <label className="grid gap-1.5 text-[13px] font-bold text-stone-700">To date<input aria-label="Bookings to date" className={selectClass} type="date" min={fromDate || undefined} value={toDate} onChange={(event) => { setPeriod('custom'); setToDate(event.target.value) }} /></label>
+        <label className="grid gap-1.5 text-[13px] font-bold text-stone-700">
+          Sort clients
+          <select className={selectClass} value={sort} onChange={(event) => setSort(event.target.value)}>
+            <option value="highest">{totalMode === 'payments' ? 'Highest payment first' : 'Highest trip value first'}</option>
+            <option value="lowest">{totalMode === 'payments' ? 'Lowest payment first' : 'Lowest trip value first'}</option>
+          </select>
+        </label>
+        <div className="flex flex-col justify-center border-t border-amber-300/40 pt-4 sm:col-span-2 lg:col-span-3">
+          <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-stone-500">{totalMode === 'payments' ? 'Net recorded payments' : 'Total trip value'} · {summaryFrom} to {summaryTo}</span>
+          <strong className="mt-1.5 font-serif text-4xl font-semibold text-emerald-950">{birr(totalValue)}</strong>
+          <span className="text-xs text-stone-500">{filteredBookings.length} bookings</span>
+        </div>
+      </div>
+      {filteredBookings.length ? <DataList columns={columns} rows={filteredBookings} getKey={getKey} /> : <Empty>No bookings in this period.</Empty>}
+    </div>
+  )
+}
+
+export function Section({ title, text, action, children, className = '' }) {
+  return (
+    <Reveal className={`py-10 sm:py-14 ${className}`}>
+      <div className="mb-7 flex flex-wrap items-end justify-between gap-3">
+        <div className="min-w-0">
+          <span className="mb-3 block h-0.5 w-12 bg-gradient-to-r from-amber-400 to-transparent" aria-hidden="true" />
+          <h2 className="font-serif text-3xl font-semibold text-emerald-950 sm:text-4xl">{title}</h2>
+          {text && <p className="mt-2 max-w-2xl text-sm leading-7 text-stone-600">{text}</p>}
+        </div>
+        {action}
+      </div>
+      {children}
+    </Reveal>
+  )
+}
+
+export function Tabs({ tabs, value, onChange, label }) {
+  return (
+    <nav className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0" aria-label={label}>
+      <div className="flex w-max gap-1.5 rounded-full border border-emerald-950/10 bg-white p-1.5 shadow-[0_8px_30px_-12px_rgba(3,31,23,.3)]">
+        {tabs.map((tab) => (
+          <button
+            key={tab.key}
+            type="button"
+            aria-pressed={value === tab.key}
+            onClick={() => onChange(tab.key)}
+            className={`cursor-pointer whitespace-nowrap rounded-full border-0 px-5 py-2.5 text-sm font-semibold transition duration-300 ${
+              value === tab.key ? 'bg-emerald-950 text-amber-200 shadow-md' : 'bg-transparent text-stone-600 hover:bg-amber-50 hover:text-emerald-950'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+    </nav>
+  )
+}
+
+export function Perm({ checked, onChange, label }) {
+  return (
+    <label
+      className={`inline-flex cursor-pointer items-center gap-2 whitespace-nowrap rounded-full border px-3 py-1.5 text-xs font-semibold transition duration-300 ${
+        checked ? 'border-amber-500 bg-amber-50 text-emerald-950' : 'border-stone-200 bg-white text-stone-600 hover:border-stone-300'
+      }`}
+    >
+      <input type="checkbox" className="size-3.5 accent-emerald-800" checked={checked} onChange={onChange} />
+      {label}
+    </label>
+  )
+}
+
+/* Table on tablets and desktops, stacked cards on phones. */
+export function DataList({ columns, rows, getKey }) {
+  return (
+    <>
+      <div className="hidden overflow-x-auto rounded-2xl border border-emerald-950/10 bg-white shadow-[0_10px_40px_-18px_rgba(3,31,23,.25)] md:block">
+        <table className="w-full border-collapse text-left text-sm">
+          <thead className="bg-[#031f17] text-[11px] uppercase tracking-[0.14em] text-amber-200/90">
+            <tr>
+              {columns.map((c) => (
+                <th key={c.label} className="whitespace-nowrap px-4 py-4 font-bold">{c.label}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-stone-200/80">
+            {rows.map((row) => (
+              <tr key={getKey(row)} className="transition duration-300 hover:bg-amber-50/70">
+                {columns.map((c) => (
+                  <td key={c.label} className="px-4 py-4 align-middle">{c.render(row)}</td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div className="grid gap-3 md:hidden">
+        {rows.map((row) => (
+          <div key={getKey(row)} className="rounded-2xl border border-emerald-950/10 bg-white p-4 shadow-[0_10px_30px_-16px_rgba(3,31,23,.3)]">
+            <dl className="grid gap-3.5">
+              {columns.map((c) => (
+                <div key={c.label} className="flex items-start justify-between gap-4">
+                  <dt className="shrink-0 pt-0.5 text-[11px] font-bold uppercase tracking-wider text-stone-500">{c.label}</dt>
+                  <dd className="flex min-w-0 flex-col items-end text-right text-sm [&_.perm-wrap]:justify-end">{c.render(row)}</dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+        ))}
+      </div>
+    </>
+  )
+}
+
+/* Dialog that slides up as a bottom sheet on phones and floats centered on larger screens. */
+export function Modal({ onClose, labelledBy, size = 'max-w-md', children }) {
+  const [shown, setShown] = useState(false)
+  const closeRef = useRef(onClose)
+
+  useEffect(() => {
+    closeRef.current = onClose
+  }, [onClose])
+
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => setShown(true))
+    const onKey = (event) => event.key === 'Escape' && closeRef.current()
+    window.addEventListener('keydown', onKey)
+    const previous = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      cancelAnimationFrame(frame)
+      window.removeEventListener('keydown', onKey)
+      document.body.style.overflow = previous
+    }
+  }, [])
+
+  return createPortal(
+    <div
+      role="presentation"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) onClose()
+      }}
+      className={`fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto overscroll-contain bg-[#031f17]/80 p-2 backdrop-blur-md transition duration-500 sm:p-4 ${
+        shown ? 'opacity-100' : 'opacity-0'
+      }`}
+    >
+      <section
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={labelledBy}
+        className={`relative my-auto max-h-[calc(100dvh-1rem)] w-full ${size} shrink-0 overflow-y-auto overscroll-contain rounded-3xl bg-white shadow-[0_40px_120px_-20px_rgba(0,0,0,.6)] ring-1 ring-amber-300/30 transition duration-500 ease-out sm:max-h-[calc(100dvh-2rem)] ${
+          shown ? 'translate-y-0 scale-100' : 'translate-y-10 scale-[.98]'
+        }`}
+      >
+        <button
+          type="button"
+          aria-label="Close"
+          onClick={onClose}
+          className="absolute right-4 top-4 z-10 grid size-10 cursor-pointer place-items-center rounded-full border-0 bg-stone-100 text-xl leading-none text-stone-600 transition hover:bg-amber-100 hover:text-emerald-950"
+        >
+          ×
+        </button>
+        {children}
+      </section>
+    </div>,
+    document.body,
+  )
+}
