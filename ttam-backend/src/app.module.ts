@@ -7,6 +7,7 @@ import { UsersModule } from './users/users.module.js';
 import { AuthModule } from './auth/auth.module.js';
 import { BookingsModule } from './bookings/bookings.module.js';
 import { TeamModule } from './team/team.module.js';
+import { MessagesModule } from './messages/messages.module.js';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
 
@@ -48,6 +49,7 @@ import { AppService } from './app.service.js';
     AuthModule,
     BookingsModule,
     TeamModule,
+    MessagesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

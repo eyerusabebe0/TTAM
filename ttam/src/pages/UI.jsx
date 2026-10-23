@@ -4,6 +4,7 @@ import { jsPDF } from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import * as XLSX from 'xlsx'
 import Reveal from '../pages/ScrollReveal.jsx'
+import { apiRequest } from '../api.js'
 import { birr } from '../utils/currency.js'
 
 /* Shared building blocks so every page speaks the same luxury visual language. */
@@ -119,7 +120,7 @@ export function Stats({ children, cols = 'grid-cols-2 sm:grid-cols-3' }) {
   return <div className={`${PAGE} relative -mt-14 grid gap-3 sm:gap-5 ${cols}`}>{children}</div>
 }
 
-export function Stat({ label, value, note, accent, className = '', delay = 0, onClick }) {
+export function Stat({ label, value, note, detail, accent, className = '', delay = 0, onClick }) {
   return (
     <Reveal delay={delay} className={className}>
       <div
@@ -135,6 +136,7 @@ export function Stat({ label, value, note, accent, className = '', delay = 0, on
           {value}
           {note && <span className="ml-2 font-sans text-xs font-medium tracking-normal text-stone-500">{note}</span>}
         </div>
+        {detail && <div className="mt-3 text-xs font-semibold text-emerald-800">{detail}</div>}
       </div>
     </Reveal>
   )
@@ -313,93 +315,143 @@ export function BookingAnalytics({ bookings, columns, getKey, totalMode = 'trip'
   )
 }
 
-export function SupportChat({ title, subtitle, participants = [] }) {
-  const [selectedId, setSelectedId] = useState(participants[0]?.id || 'owner')
+export function SupportChat({ currentUser, token }) {
+  const [open, setOpen] = useState(false)
+  const [contacts, setContacts] = useState([])
+  const [selectedId, setSelectedId] = useState('')
+  const [messages, setMessages] = useState([])
+  const [loadedPeerId, setLoadedPeerId] = useState('')
   const [draft, setDraft] = useState('')
-  const [messages, setMessages] = useState([
-    { id: 'system-1', from: 'owner', text: 'Operations desk ready. Please share any urgent issue or approval update.', time: 'Now' },
-    { id: 'system-2', from: 'manager', text: 'I can help with approval and customer communication.', time: 'Now' },
-  ])
+  const [error, setError] = useState('')
+  const [sending, setSending] = useState(false)
+
+  const currentUserId = currentUser?.id
 
   useEffect(() => {
-    if (participants.length && !participants.some((participant) => participant.id === selectedId)) {
-      setSelectedId(participants[0].id)
+    if (!token || !currentUserId) return
+    let active = true
+    apiRequest('/messages/contacts', { token })
+      .then((rows) => {
+        if (!active) return
+        setContacts(rows)
+        setError('')
+        setSelectedId((current) => rows.some((contact) => String(contact.id) === current) ? current : String(rows[0]?.id || ''))
+      })
+      .catch((loadError) => { if (active) setError(`Could not load message contacts: ${loadError.message}`) })
+    return () => { active = false }
+  }, [token, currentUserId])
+
+  useEffect(() => {
+    if (!open || !selectedId || !token) return
+    let active = true
+    const loadMessages = () => apiRequest(`/messages/${selectedId}`, { token })
+      .then((rows) => { if (active) { setMessages(rows); setLoadedPeerId(selectedId); setError('') } })
+      .catch((loadError) => { if (active) setError(`Could not load messages: ${loadError.message}`) })
+    loadMessages()
+    const interval = window.setInterval(loadMessages, 5000)
+    return () => {
+      active = false
+      window.clearInterval(interval)
     }
-  }, [participants, selectedId])
+  }, [open, selectedId, token])
 
-  const selected = participants.find((participant) => participant.id === selectedId) || participants[0]
+  const selected = contacts.find((contact) => String(contact.id) === selectedId)
+  const visibleMessages = loadedPeerId === selectedId ? messages : []
 
-  function sendMessage(event) {
+  async function sendMessage(event) {
     event.preventDefault()
-    const value = draft.trim()
-    if (!value) return
-    setMessages((current) => [
-      ...current,
-      { id: `${Date.now()}`, from: 'owner', text: value, time: 'Now' },
-    ])
-    setDraft('')
+    const body = draft.trim()
+    if (!body || !selectedId || sending) return
+    setSending(true)
+    setError('')
+    try {
+      const message = await apiRequest(`/messages/${selectedId}`, {
+        token,
+        method: 'POST',
+        body: JSON.stringify({ body }),
+      })
+      setLoadedPeerId(selectedId)
+      setMessages((current) => [...current, message])
+      setDraft('')
+    } catch (sendError) {
+      setError(`Could not send message: ${sendError.message}`)
+    } finally {
+      setSending(false)
+    }
   }
 
   return (
-    <div className="mb-8 rounded-3xl border border-emerald-950/10 bg-white p-4 shadow-[0_12px_40px_-18px_rgba(3,31,23,.25)] sm:p-5">
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <div className="text-[11px] font-bold uppercase tracking-[0.3em] text-amber-700">Live support</div>
-          <h3 className="mt-2 font-serif text-3xl font-semibold text-emerald-950">{title}</h3>
-        </div>
-        <span className="rounded-full bg-emerald-50 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.2em] text-emerald-800">Online</span>
-      </div>
-      <p className="mb-4 text-sm text-stone-600">{subtitle}</p>
-      <div className="grid gap-4 lg:grid-cols-[220px_minmax(0,1fr)]">
-        <div className="overflow-hidden rounded-2xl border border-stone-200 bg-stone-50">
-          <div className="border-b border-stone-200 px-3 py-3 text-[11px] font-bold uppercase tracking-[0.2em] text-stone-500">Contacts</div>
-          <div className="divide-y divide-stone-200">
-            {participants.map((participant) => (
-              <button
-                key={participant.id}
-                type="button"
-                onClick={() => setSelectedId(participant.id)}
-                className={`flex w-full items-center justify-between gap-3 px-3 py-3 text-left text-sm transition ${selectedId === participant.id ? 'bg-emerald-950 text-amber-200' : 'bg-transparent text-stone-700 hover:bg-white'}`}
-              >
-                <span className="font-semibold">{participant.name}</span>
-                <span className="text-[10px] uppercase tracking-[0.2em] opacity-70">{participant.role}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="rounded-2xl border border-stone-200 bg-stone-50 p-3">
-          <div className="mb-3 flex items-center justify-between gap-3 border-b border-stone-200 pb-3">
-            <div>
-              <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-stone-500">Connected to</div>
-              <strong className="block text-emerald-950">{selected?.name || 'Support team'}</strong>
+    <>
+      <button
+        type="button"
+        aria-label="Open messages"
+        title="Messages"
+        onClick={() => setOpen(true)}
+        className="fixed bottom-5 right-5 z-40 grid size-14 cursor-pointer place-items-center rounded-full border-0 bg-emerald-950 text-amber-200 shadow-xl shadow-emerald-950/30 transition hover:-translate-y-1 hover:bg-emerald-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-500"
+      >
+        <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" className="size-6" stroke="currentColor" strokeWidth="1.8">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 8.25h9m-9 4.5h6m-9.75 7.5 2.8-3.1a8.25 8.25 0 1 1 2.6 1.04L3.75 20.25Z" />
+        </svg>
+      </button>
+      {open && (
+        <Modal onClose={() => setOpen(false)} labelledBy="messages-title" size="max-w-4xl">
+          <div className="p-5 sm:p-8">
+            <div className="mb-5 pr-10">
+              <p className="m-0 text-[11px] font-bold uppercase tracking-[0.25em] text-amber-700">Workspace inbox</p>
+              <h2 id="messages-title" className="mb-0 mt-2 font-serif text-3xl font-semibold text-emerald-950">Messages</h2>
+              <p className="mb-0 mt-2 text-sm text-stone-600">Owner ↔ manager · Manager ↔ agent</p>
             </div>
-            <span className="rounded-full border border-emerald-200 bg-white px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.2em] text-emerald-700">Ready</span>
-          </div>
-
-          <div className="space-y-3">
-            {messages.map((message) => (
-              <div key={message.id} className={`flex ${message.from === 'owner' ? 'justify-end' : 'justify-start'}`}>
-                <div className={`max-w-[80%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${message.from === 'owner' ? 'bg-emerald-950 text-amber-100' : 'bg-white text-stone-700'}`}>
-                  <div>{message.text}</div>
-                  <div className={`mt-1 text-[10px] uppercase tracking-[0.12em] ${message.from === 'owner' ? 'text-amber-200/90' : 'text-stone-500'}`}>{message.time}</div>
+            {error && <p role="alert" className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{error}</p>}
+            <div className="grid gap-4 md:grid-cols-[220px_minmax(0,1fr)]">
+              <nav aria-label="Message contacts" className="max-h-60 overflow-y-auto rounded-2xl border border-stone-200 bg-stone-50 md:max-h-[460px]">
+                {contacts.length ? contacts.map((contact) => (
+                  <button
+                    key={contact.id}
+                    type="button"
+                    onClick={() => setSelectedId(String(contact.id))}
+                    className={`flex w-full items-center justify-between gap-3 border-0 border-b border-stone-200 px-4 py-3 text-left text-sm last:border-0 ${selectedId === String(contact.id) ? 'bg-emerald-950 text-amber-100' : 'bg-transparent text-stone-700 hover:bg-white'}`}
+                  >
+                    <span className="min-w-0 truncate font-semibold">{contact.name}</span>
+                    <span className="text-[10px] uppercase tracking-wider opacity-70">{contact.role}</span>
+                  </button>
+                )) : <p className="m-0 p-4 text-sm text-stone-500">No eligible contacts are available yet.</p>}
+              </nav>
+              <div className="flex min-h-[320px] flex-col rounded-2xl border border-stone-200 bg-stone-50 p-3 sm:min-h-[460px]">
+                <div className="border-b border-stone-200 px-2 pb-3">
+                  <span className="block text-[10px] font-bold uppercase tracking-[0.2em] text-stone-500">Conversation</span>
+                  <strong className="text-emerald-950">{selected?.name || 'Choose a contact'}</strong>
                 </div>
+                <div className="flex-1 space-y-3 overflow-y-auto py-4">
+                  {visibleMessages.length ? visibleMessages.map((message) => {
+                    const ownMessage = Number(message.senderId) === Number(currentUser?.id)
+                    return (
+                      <div key={message.id} className={`flex ${ownMessage ? 'justify-end' : 'justify-start'}`}>
+                        <div className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${ownMessage ? 'bg-emerald-950 text-amber-100' : 'bg-white text-stone-700 shadow-sm'}`}>
+                          <p className="m-0 whitespace-pre-wrap break-words">{message.body}</p>
+                          <time className={`mt-1 block text-[10px] ${ownMessage ? 'text-amber-200/80' : 'text-stone-500'}`} dateTime={message.createdAt}>{new Date(message.createdAt).toLocaleString()}</time>
+                        </div>
+                      </div>
+                    )
+                  }) : <p className="m-0 py-8 text-center text-sm text-stone-500">{selected ? 'No messages yet. Start the conversation.' : 'Select a contact to see messages.'}</p>}
+                </div>
+                <form onSubmit={sendMessage} className="flex gap-2 border-t border-stone-200 pt-3">
+                  <input
+                    aria-label="Message"
+                    maxLength="2000"
+                    className="min-h-11 min-w-0 flex-1 rounded-full border border-stone-300 bg-white px-4 text-sm text-stone-900 outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-400/20"
+                    value={draft}
+                    onChange={(event) => setDraft(event.target.value)}
+                    placeholder={selected ? `Message ${selected.name}...` : 'Choose a contact'}
+                    disabled={!selected}
+                  />
+                  <button type="submit" className={`${BTN} px-5`} disabled={!selected || !draft.trim() || sending}>{sending ? 'Sending…' : 'Send'}</button>
+                </form>
               </div>
-            ))}
+            </div>
           </div>
-
-          <form onSubmit={sendMessage} className="mt-4 flex gap-2">
-            <input
-              className="min-h-11 flex-1 rounded-full border border-stone-300 bg-white px-4 text-sm text-stone-900 outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-400/20"
-              value={draft}
-              onChange={(event) => setDraft(event.target.value)}
-              placeholder={`Message ${selected?.name || 'team'}...`}
-            />
-            <button type="submit" className={BTN}>Send</button>
-          </form>
-        </div>
-      </div>
-    </div>
+        </Modal>
+      )}
+    </>
   )
 }
 

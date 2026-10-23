@@ -178,6 +178,7 @@ function App() {
     setApiError('')
     const permissions = account.permissions || {}
     setCurrentUser({
+      id: account.id,
       name: account.name,
       email: account.email,
       role: nextRole,
@@ -613,9 +614,9 @@ function App() {
         <div key={workspacePage} className="workspace-enter">
           {apiError && <div className="mx-auto max-w-[1240px] px-4 pt-4 text-sm text-red-800" role="alert">{apiError}</div>}
           {(role === 'client' || showJourneys) && <ClientPage {...shared} notificationTarget={notificationTarget} view={currentUser?.role === 'client' && !showJourneys ? 'dashboard' : 'browse'} signedIn={currentUser?.role === 'client'} currentUser={currentUser?.role === 'client' ? currentUser : null} onSignIn={() => setAuthMode('login')} onDashboard={() => setShowJourneys(false)} onBooking={addBooking} onPayment={recordPayment} onCancelBooking={cancelBooking} />}
-          {!showJourneys && role === 'agent' && <AgentPage {...shared} notificationTarget={notificationTarget} currentEmail={currentUser?.email ?? ''} onRegisterSubAgent={registerSubAgent} />}
-          {!showJourneys && role === 'manager' && <ManagerPage {...shared} notificationTarget={notificationTarget} currentPermissions={currentUser?.permissions} onApprove={approveAgent} onAgentCodeChange={updateAgentCode} onPermissionChange={toggleAgentPermission} onAgentActiveChange={setAgentActive} onBookingUpdate={updateBooking} onBookingApprove={approveBooking} />}
-          {!showJourneys && role === 'owner' && <OwnerPage {...shared} notificationTarget={notificationTarget} onAddTour={(tour) => saveTour(tour, 'POST')} onUpdateTour={(tour) => saveTour(tour, 'PATCH', tour.id)} onDeleteTour={deleteTour} onAddManager={addManager} onApproveManager={approveManager} onManagerActiveChange={setManagerActive} onManagerPermissionChange={toggleTeamPermission} onBookingUpdate={updateBooking} />}
+          {!showJourneys && role === 'agent' && <AgentPage {...shared} notificationTarget={notificationTarget} currentEmail={currentUser?.email ?? ''} currentUser={currentUser} token={sessionToken} onRegisterSubAgent={registerSubAgent} />}
+          {!showJourneys && role === 'manager' && <ManagerPage {...shared} notificationTarget={notificationTarget} currentUser={currentUser} token={sessionToken} currentPermissions={currentUser?.permissions} onApprove={approveAgent} onAgentCodeChange={updateAgentCode} onPermissionChange={toggleAgentPermission} onAgentActiveChange={setAgentActive} onBookingUpdate={updateBooking} onBookingApprove={approveBooking} />}
+          {!showJourneys && role === 'owner' && <OwnerPage {...shared} notificationTarget={notificationTarget} currentUser={currentUser} token={sessionToken} onAddTour={(tour) => saveTour(tour, 'POST')} onUpdateTour={(tour) => saveTour(tour, 'PATCH', tour.id)} onDeleteTour={deleteTour} onAddManager={addManager} onApproveManager={approveManager} onManagerActiveChange={setManagerActive} onManagerPermissionChange={toggleTeamPermission} onBookingUpdate={updateBooking} />}
         </div>
       </main>
       {authMode && <AuthDialog key={authMode} initialMode={authMode} onClose={() => setAuthMode('')} onLogin={login} onSignup={signup} />}
@@ -652,6 +653,7 @@ function mapAgent(agent) {
     leads: Number(agent.leads || 0),
     revenue: Number(agent.revenue || 0),
     commission: Number(agent.commission || 0),
+    paidCommission: Number(agent.paidCommission || 0),
   }
 }
 

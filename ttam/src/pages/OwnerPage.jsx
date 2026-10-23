@@ -13,7 +13,7 @@ function localDateInputValue() {
   return new Date(now.getTime() - now.getTimezoneOffset() * 60_000).toISOString().slice(0, 10)
 }
 
-function OwnerPage({ tours, agents, team, bookings, managerPermissionOptions, notificationTarget, onAddTour, onUpdateTour, onDeleteTour, onAddManager, onApproveManager, onManagerActiveChange, onManagerPermissionChange, onBookingUpdate }) {
+function OwnerPage({ tours, agents, team, bookings, managerPermissionOptions, currentUser, token, notificationTarget, onAddTour, onUpdateTour, onDeleteTour, onAddManager, onApproveManager, onManagerActiveChange, onManagerPermissionChange, onBookingUpdate }) {
   const [form, setForm] = useState(blankTour)
   const [managerForm, setManagerForm] = useState({ name: '', email: '', password: '', permissions: blankPermissions })
   const [showPassword, setShowPassword] = useState(false)
@@ -147,15 +147,7 @@ function OwnerPage({ tours, agents, team, bookings, managerPermissionOptions, no
       <div className={PAGE}>
         {message && <div className="pt-8"><Notice>{message}</Notice></div>}
         <div className="pt-6">
-          <SupportChat
-            title="Operations coordination"
-            subtitle="Air quick updates with hotel, agent, and manager teams before issues escalate."
-            participants={[
-              { id: 'owner', name: 'Owner', role: 'owner' },
-              ...team.filter((member) => member.status === 'approved' && member.isActive !== false).map((member) => ({ id: String(member.id), name: member.name, role: 'manager' })),
-              ...agents.filter((agent) => agent.status === 'approved' && agent.isActive !== false).map((agent) => ({ id: String(agent.id), name: agent.name, role: 'agent' })),
-            ]}
-          />
+          <SupportChat currentUser={currentUser} token={token} />
           <Tabs
             tabs={[
               { key: 'overview', label: 'Overview' },

@@ -22,19 +22,24 @@ function useLuxuryFonts() {
   }, [])
 }
 
-function Header({ currentUser, onLogin, onSignup, onLogout, onBrowse, onDashboard, notifications = [], onNotificationClick }) {
+function Header({ currentUser, onLogin, onSignup, onLogout, onBrowse, onDashboard, notifications = [] }) {
   const [open, setOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
   const notificationStorageKey = currentUser
     ? `ttam-read-notifications:${currentUser.role}:${currentUser.email.toLowerCase()}`
     : ''
-  const [notificationsOpen, setNotificationsOpen] = useState(false)
   const [seenNotifications, setSeenNotifications] = useState(() => new Set(
     notificationStorageKey ? JSON.parse(localStorage.getItem(notificationStorageKey) || '[]') : [],
   ))
   const unreadCount = notifications.filter((notification) => !seenNotifications.has(notification.id)).length
   const dashboardHref = currentUser?.role === 'client' ? '#client-dashboard' : '#dashboard'
   const initial = currentUser?.name?.trim().charAt(0).toUpperCase() || 'U'
+  const markNotificationsSeen = () => {
+    if (!notificationStorageKey || !unreadCount) return
+    const next = new Set([...seenNotifications, ...notifications.map((notification) => notification.id)])
+    setSeenNotifications(next)
+    localStorage.setItem(notificationStorageKey, JSON.stringify([...next]))
+  }
   useLuxuryFonts()
 
   useEffect(() => {
@@ -45,15 +50,6 @@ function Header({ currentUser, onLogin, onSignup, onLogout, onBrowse, onDashboar
   }, [])
 
   const close = () => setOpen(false)
-  const toggleNotifications = () => {
-    if (!notificationsOpen && notificationStorageKey) {
-      const next = new Set([...seenNotifications, ...notifications.map((notification) => notification.id)])
-      setSeenNotifications(next)
-      localStorage.setItem(notificationStorageKey, JSON.stringify([...next]))
-    }
-    setNotificationsOpen((value) => !value)
-  }
-  const closeNotifications = () => setNotificationsOpen(false)
 
   return (
     <header
@@ -101,14 +97,14 @@ function Header({ currentUser, onLogin, onSignup, onLogout, onBrowse, onDashboar
           </a>
           {currentUser ? (
             <div className="flex items-center gap-4">
-              <NotificationBell open={notificationsOpen} unreadCount={unreadCount} seenNotifications={seenNotifications} notifications={notifications} onToggle={toggleNotifications} onClose={closeNotifications} onNotificationClick={onNotificationClick} />
               <a
-                className="grid size-11 place-items-center rounded-full bg-gradient-to-br from-amber-200 to-amber-500 font-serif text-lg font-bold text-emerald-950 no-underline ring-2 ring-amber-300/40 ring-offset-2 ring-offset-[#031f17] transition duration-300 hover:scale-105"
+                className="relative grid size-11 place-items-center rounded-full bg-gradient-to-br from-amber-200 to-amber-500 font-serif text-lg font-bold text-emerald-950 no-underline ring-2 ring-amber-300/40 ring-offset-2 ring-offset-[#031f17] transition duration-300 hover:scale-105"
                 href={dashboardHref}
-                onClick={onDashboard}
-                aria-label={`Go to ${currentUser.name}'s dashboard`}
+                onClick={() => { markNotificationsSeen(); onDashboard(); close() }}
+                aria-label={unreadCount ? `Go to ${currentUser.name}'s dashboard, ${unreadCount} unread notifications` : `Go to ${currentUser.name}'s dashboard`}
               >
                 {initial}
+                {unreadCount > 0 && <span aria-hidden="true" className="absolute -right-1 -top-1 grid min-h-5 min-w-5 place-items-center rounded-full border-2 border-[#031f17] bg-red-600 px-1 font-sans text-[10px] font-extrabold leading-none text-white">{unreadCount > 99 ? '99+' : unreadCount}</span>}
               </a>
               <button className="cursor-pointer border-0 bg-transparent p-0 text-sm font-semibold text-emerald-100/75 transition hover:text-amber-300" onClick={onLogout}>
                 Log out
@@ -130,7 +126,17 @@ function Header({ currentUser, onLogin, onSignup, onLogout, onBrowse, onDashboar
         </nav>
 
         <div className="flex items-center gap-2 md:hidden">
-          {currentUser && <NotificationBell open={notificationsOpen} unreadCount={unreadCount} seenNotifications={seenNotifications} notifications={notifications} onToggle={toggleNotifications} onClose={closeNotifications} onNotificationClick={onNotificationClick} />}
+          {currentUser && (
+            <a
+              className="relative grid size-10 place-items-center rounded-full bg-gradient-to-br from-amber-200 to-amber-500 font-serif font-bold text-emerald-950 no-underline ring-2 ring-amber-300/40"
+              href={dashboardHref}
+              onClick={() => { markNotificationsSeen(); onDashboard() }}
+              aria-label={unreadCount ? `Go to ${currentUser.name}'s dashboard, ${unreadCount} unread notifications` : `Go to ${currentUser.name}'s dashboard`}
+            >
+              {initial}
+              {unreadCount > 0 && <span aria-hidden="true" className="absolute -right-1 -top-1 grid min-h-5 min-w-5 place-items-center rounded-full border-2 border-[#031f17] bg-red-600 px-1 font-sans text-[10px] font-extrabold leading-none text-white">{unreadCount > 99 ? '99+' : unreadCount}</span>}
+            </a>
+          )}
           <button
             type="button"
             className="grid size-11 cursor-pointer place-items-center rounded-full border border-amber-300/40 bg-white/5"
@@ -174,50 +180,6 @@ function Header({ currentUser, onLogin, onSignup, onLogout, onBrowse, onDashboar
         </div>
       </div>
     </header>
-  )
-}
-
-function NotificationBell({ open, unreadCount, seenNotifications, notifications, onToggle, onClose, onNotificationClick }) {
-  return (
-    <div className="relative">
-      <button
-        type="button"
-        className="relative grid size-11 cursor-pointer place-items-center rounded-full border border-amber-300/40 bg-white/5 text-amber-100 transition hover:bg-amber-300/10"
-        aria-label={unreadCount ? `Notifications, ${unreadCount} unread` : 'Notifications'}
-        aria-expanded={open}
-        onClick={onToggle}
-      >
-        <svg className="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4" />
-        </svg>
-        {unreadCount > 0 && <span className="absolute -right-1 -top-1 grid min-h-5 min-w-5 place-items-center rounded-full border-2 border-[#031f17] bg-red-600 px-1 text-[10px] font-extrabold leading-none text-white">{unreadCount > 99 ? '99+' : unreadCount}</span>}
-      </button>
-      {open && (
-        <div className="absolute right-0 top-[calc(100%+0.75rem)] z-50 max-h-[min(70vh,28rem)] w-[min(24rem,calc(100vw-2rem))] overflow-y-auto overscroll-contain rounded-2xl border border-stone-200 bg-white p-2 text-stone-900 shadow-2xl">
-          <div className="flex items-center justify-between px-3 py-2">
-            <h2 className="m-0 text-sm font-bold text-emerald-950">Notifications</h2>
-            {notifications.length > 0 && <span className="text-xs text-stone-500">{notifications.length} total</span>}
-          </div>
-          {notifications.length ? notifications.map((notification) => (
-            <button
-              key={notification.id}
-              type="button"
-              className="flex w-full cursor-pointer items-start gap-3 rounded-xl border-0 bg-transparent px-3 py-3 text-left transition hover:bg-amber-50"
-              onClick={() => {
-                onClose()
-                onNotificationClick?.(notification)
-              }}
-            >
-              <span className={`mt-1.5 size-2 shrink-0 rounded-full ${seenNotifications.has(notification.id) ? 'bg-stone-300' : 'bg-red-600'}`} aria-hidden="true" />
-              <span className="min-w-0">
-                <strong className="block text-sm text-emerald-950">{notification.title}</strong>
-                <span className="mt-0.5 block text-xs leading-relaxed text-stone-600">{notification.message}</span>
-              </span>
-            </button>
-          )) : <p className="m-0 px-3 py-4 text-sm text-stone-500">You’re all caught up.</p>}
-        </div>
-      )}
-    </div>
   )
 }
 

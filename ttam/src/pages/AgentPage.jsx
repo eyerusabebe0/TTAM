@@ -1,12 +1,15 @@
 import { useEffect } from 'react'
 import { birr } from '../utils/currency.js'
-import { Badge, Card, DataList, Empty, PAGE, PageHeader, Section, Stat, Stats } from './UI.jsx'
+import { Badge, Card, DataList, Empty, PAGE, PageHeader, Section, Stat, Stats, SupportChat } from './UI.jsx'
 import Reveal from './ScrollReveal.jsx'
 
-function AgentPage({ agents = [], bookings = [], currentEmail = '', notificationTarget }) {
+function AgentPage({ agents = [], bookings = [], currentEmail = '', currentUser, token, notificationTarget }) {
   const agent = agents.find((item) => item.email.toLowerCase() === currentEmail.toLowerCase())
   const referrals = bookings.filter((booking) => booking.agentId === agent?.id)
   const canViewBookings = Boolean(agent?.permissions?.viewBookings)
+  const paidCommission = Number(agent?.paidCommission ?? referrals
+    .filter((booking) => booking.paymentStatus === 'Paid')
+    .reduce((total, booking) => total + Number(booking.commission || 0), 0))
 
   useEffect(() => {
     if (notificationTarget?.section !== 'referrals') return
@@ -44,6 +47,7 @@ function AgentPage({ agents = [], bookings = [], currentEmail = '', notification
           label="Commission (10%)"
           value={birr(agent?.commission ?? referrals.reduce((total, booking) => total + Number(booking.commission || 0), 0))}
           note="earned"
+          detail={`Paid commission: ${birr(paidCommission)}`}
           delay={200}
           className="col-span-2 sm:col-span-1"
           onClick={canViewBookings ? openReferrals : undefined}
@@ -51,6 +55,7 @@ function AgentPage({ agents = [], bookings = [], currentEmail = '', notification
       </Stats>
 
       <div className={`${PAGE} pt-8`}>
+        <SupportChat currentUser={currentUser} token={token} />
         <div className="grid gap-8 lg:grid-cols-[.8fr_1.2fr]">
           <Section title="Your invitation code" text="Share this code with travelers so their requests are attributed to you.">
             <Card>

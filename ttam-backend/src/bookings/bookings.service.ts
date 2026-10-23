@@ -230,16 +230,22 @@ export class BookingsService implements OnModuleInit, OnModuleDestroy {
         'COALESCE(SUM(CASE WHEN b."paymentStatus" IN (:...recognizedPayments) THEN b.commission ELSE 0 END), 0)',
         'commission',
       )
+      .addSelect(
+        'COALESCE(SUM(CASE WHEN b."paymentStatus" = :paidPayment THEN b.commission ELSE 0 END), 0)',
+        'paidCommission',
+      )
       .where('b.agentId = :agentId', { agentId })
       .setParameters({
         recognizedPayments: [PaymentStatus.PAID, PaymentStatus.REFUND_DUE, PaymentStatus.REFUNDED],
         refundPayments: [PaymentStatus.REFUND_DUE, PaymentStatus.REFUNDED],
+        paidPayment: PaymentStatus.PAID,
       })
-      .getRawOne<{ leads: string; revenue: string; commission: string }>();
+      .getRawOne<{ leads: string; revenue: string; commission: string; paidCommission: string }>();
     return {
       leads: Number(row?.leads ?? 0),
       revenue: Number(row?.revenue ?? 0),
       commission: Number(row?.commission ?? 0),
+      paidCommission: Number(row?.paidCommission ?? 0),
     };
   }
 

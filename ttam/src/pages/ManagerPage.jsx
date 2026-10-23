@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { birr } from '../utils/currency.js'
 import { Badge, BookingAnalytics, BTN, BTN_OUTLINE, DataList, Empty, Field, Modal, Notice, PAGE, PageHeader, Perm, Section, Stat, Stats, SupportChat, Tabs } from './UI.jsx'
 
-function ManagerPage({ agents, bookings, permissionOptions, currentPermissions, notificationTarget, onApprove, onAgentCodeChange, onPermissionChange, onAgentActiveChange, onBookingUpdate, onBookingApprove }) {
+function ManagerPage({ agents, bookings, permissionOptions, currentPermissions, currentUser, token, notificationTarget, onApprove, onAgentCodeChange, onPermissionChange, onAgentActiveChange, onBookingUpdate, onBookingApprove }) {
   const defaultView = currentPermissions?.approveAgents ? 'agents' : currentPermissions?.viewBookings || currentPermissions?.approveBookings ? 'bookings' : 'locked'
   const [view, setView] = useState(currentPermissions ? defaultView : 'agents')
   const [agentStatusFilter, setAgentStatusFilter] = useState('all')
@@ -190,14 +190,7 @@ function ManagerPage({ agents, bookings, permissionOptions, currentPermissions, 
         {tabs.length > 0 && <Tabs tabs={tabs} value={view} onChange={(key) => { setView(key); setMessage('') }} label="Manager tools" />}
         {message && <div className="mt-6"><Notice>{message}</Notice></div>}
 
-        <SupportChat
-          title="Agency support desk"
-          subtitle="Message agents directly for approvals, dispute handling, or travel guidance."
-          participants={[
-            { id: 'manager', name: 'Manager', role: 'manager' },
-            ...agents.filter((agent) => agent.status === 'approved' && agent.isActive !== false).map((agent) => ({ id: String(agent.id), name: agent.name, role: 'agent' })),
-          ]}
-        />
+        <SupportChat currentUser={currentUser} token={token} />
 
         {view === 'agents' && canApproveAgents && (
           <div id="manager-agent-applications" className="scroll-mt-24">
