@@ -63,24 +63,24 @@ function Header({ currentUser, onLogin, onSignup, onLogout, onBrowse, onDashboar
         aria-hidden="true"
         className={`absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-amber-300/70 to-transparent transition-opacity duration-500 ${scrolled ? 'opacity-100' : 'opacity-0'}`}
       />
-      <div className={`mx-auto flex max-w-[1280px] items-center justify-between gap-4 px-4 transition-all duration-500 sm:px-8 lg:px-12 ${scrolled ? 'h-[64px] sm:h-[70px]' : 'h-[72px] sm:h-[84px]'}`}>
+      <div className={`mx-auto flex max-w-[1280px] items-center justify-between gap-2 px-3 transition-all duration-500 sm:gap-4 sm:px-8 lg:px-12 ${scrolled ? 'h-[52px] sm:h-[70px]' : 'h-[58px] sm:h-[84px]'}`}>
         <a
-          className="group inline-flex min-w-0 items-center gap-3.5 no-underline"
+          className="group inline-flex shrink-0 items-center gap-2 no-underline sm:gap-3.5"
           href="#top"
           onClick={(event) => { event.preventDefault(); onBrowse(); close() }}
           aria-label="Ask Tour and Travel home"
         >
-          <span className="brand-flight relative grid size-11 shrink-0 place-items-center overflow-hidden rounded-full border border-amber-300/50 bg-gradient-to-br from-amber-300/20 to-amber-500/5 shadow-inner shadow-amber-300/10 transition duration-500 group-hover:border-amber-300 group-hover:shadow-amber-300/30">
-            <svg className="brand-flight-plane size-6 text-amber-300" viewBox="0 0 36 36" fill="none" aria-hidden="true">
+          <span className="brand-flight relative grid size-9 shrink-0 place-items-center overflow-hidden rounded-full border border-amber-300/50 bg-gradient-to-br from-amber-300/20 to-amber-500/5 shadow-inner shadow-amber-300/10 transition duration-500 group-hover:border-amber-300 group-hover:shadow-amber-300/30 sm:size-11">
+            <svg className="brand-flight-plane size-5 text-amber-300 sm:size-6" viewBox="0 0 36 36" fill="none" aria-hidden="true">
               <path d="m4 17 27-11-8 25-5-10-10-4Z" fill="currentColor" />
               <path d="m18 21 13-15" stroke="#031f17" strokeWidth="1.4" />
               <path d="M5 26h8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" opacity=".7" />
               <path d="M2 30h7" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" opacity=".45" />
             </svg>
           </span>
-          <span className="min-w-0 truncate font-serif text-xl font-semibold leading-none tracking-wide text-white sm:text-[1.7rem]">
+          <span className="block whitespace-nowrap font-serif text-[1.05rem] font-semibold leading-none tracking-wide text-white sm:text-[1.7rem]">
             Ask Tour and Travel
-            <small className="mt-1.5 block truncate font-sans text-[9.5px] font-semibold uppercase tracking-[0.32em] text-amber-300/90 sm:text-[10px]">
+            <small className="mt-1 block whitespace-nowrap font-sans text-[7.5px] font-semibold uppercase tracking-[0.2em] text-amber-300/90 sm:mt-1.5 sm:text-[10px] sm:tracking-[0.32em]">
               Journeys in Ethiopia
             </small>
           </span>
@@ -125,21 +125,21 @@ function Header({ currentUser, onLogin, onSignup, onLogout, onBrowse, onDashboar
           )}
         </nav>
 
-        <div className="flex items-center gap-2 md:hidden">
+        <div className="flex shrink-0 items-center gap-1.5 md:hidden">
           {currentUser && (
             <a
-              className="relative grid size-10 place-items-center rounded-full bg-gradient-to-br from-amber-200 to-amber-500 font-serif font-bold text-emerald-950 no-underline ring-2 ring-amber-300/40"
+              className="relative grid size-9 place-items-center rounded-full bg-gradient-to-br from-amber-200 to-amber-500 font-serif text-base font-bold text-emerald-950 no-underline ring-2 ring-amber-300/40"
               href={dashboardHref}
               onClick={() => { markNotificationsSeen(); onDashboard() }}
               aria-label={unreadCount ? `Go to ${currentUser.name}'s dashboard, ${unreadCount} unread notifications` : `Go to ${currentUser.name}'s dashboard`}
             >
               {initial}
-              {unreadCount > 0 && <span aria-hidden="true" className="absolute -right-1 -top-1 grid min-h-5 min-w-5 place-items-center rounded-full border-2 border-[#031f17] bg-red-600 px-1 font-sans text-[10px] font-extrabold leading-none text-white">{unreadCount > 99 ? '99+' : unreadCount}</span>}
+              {unreadCount > 0 && <span aria-hidden="true" className="absolute -right-1 -top-1 grid min-h-4 min-w-4 place-items-center rounded-full border-2 border-[#031f17] bg-red-600 px-1 font-sans text-[9px] font-extrabold leading-none text-white">{unreadCount > 99 ? '99+' : unreadCount}</span>}
             </a>
           )}
           <button
             type="button"
-            className="grid size-11 cursor-pointer place-items-center rounded-full border border-amber-300/40 bg-white/5"
+            className="grid size-9 cursor-pointer place-items-center rounded-full border border-amber-300/40 bg-white/5"
             aria-label={open ? 'Close menu' : 'Open menu'}
             aria-expanded={open}
             onClick={() => setOpen((value) => !value)}
@@ -154,25 +154,25 @@ function Header({ currentUser, onLogin, onSignup, onLogout, onBrowse, onDashboar
       </div>
 
       <div className={`overflow-hidden transition-[max-height] duration-500 ease-out md:hidden ${open ? 'max-h-96' : 'max-h-0'}`}>
-        <div className="grid gap-2 border-t border-white/10 px-4 pb-6 pt-4">
-          <a className="rounded-xl bg-amber-300/15 px-4 py-3.5 text-base font-semibold text-amber-200 no-underline hover:bg-amber-300 hover:text-emerald-950" href="#journeys" onClick={() => { onBrowse(); close() }}>
+        <div className="grid gap-1.5 border-t border-white/10 px-4 pb-5 pt-3">
+          <a className="rounded-xl bg-amber-300/15 px-4 py-3 text-[15px] font-semibold text-amber-200 no-underline hover:bg-amber-300 hover:text-emerald-950" href="#journeys" onClick={() => { onBrowse(); close() }}>
             Find your journey
           </a>
           {currentUser ? (
             <>
-              <a className="rounded-xl px-4 py-3.5 text-base font-semibold text-white no-underline hover:bg-white/10" href={dashboardHref} onClick={() => { onDashboard(); close() }}>
+              <a className="rounded-xl px-4 py-3 text-[15px] font-semibold text-white no-underline hover:bg-white/10" href={dashboardHref} onClick={() => { onDashboard(); close() }}>
                 My dashboard · {currentUser.name}
               </a>
-              <button className="cursor-pointer rounded-xl border border-white/20 bg-transparent px-4 py-3.5 text-left text-base font-semibold text-white" onClick={() => { onLogout(); close() }}>
+              <button className="cursor-pointer rounded-xl border border-white/20 bg-transparent px-4 py-3 text-left text-[15px] font-semibold text-white" onClick={() => { onLogout(); close() }}>
                 Log out
               </button>
             </>
           ) : (
             <div className="grid grid-cols-2 gap-3 pt-1">
-              <button className="min-h-12 cursor-pointer rounded-full border border-white/30 bg-transparent text-base font-semibold text-white" onClick={() => { onLogin(); close() }}>
+              <button className="min-h-11 cursor-pointer rounded-full border border-white/30 bg-transparent text-[15px] font-semibold text-white" onClick={() => { onLogin(); close() }}>
                 Log in
               </button>
-              <button className="min-h-12 cursor-pointer rounded-full border-0 bg-gradient-to-b from-amber-200 to-amber-500 text-base font-bold text-emerald-950" onClick={() => { onSignup(); close() }}>
+              <button className="min-h-11 cursor-pointer rounded-full border-0 bg-gradient-to-b from-amber-200 to-amber-500 text-[15px] font-bold text-emerald-950" onClick={() => { onSignup(); close() }}>
                 Sign up
               </button>
             </div>
