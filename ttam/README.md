@@ -6,6 +6,10 @@ The frontend uses the NestJS API at `http://localhost:3000/api` by default. Set
 `VITE_API_URL` to change that base URL. Start the backend and configure its
 PostgreSQL database, `JWT_SECRET`, `OWNER_EMAIL`, and `OWNER_PASSWORD` before
 using account signup, login, or persistent bookings.
+The API URL must include the `/api` prefix. Copy `.env.example` to `.env` for
+local configuration; `VITE_` values are included in the built frontend, so do
+not put secrets in them. Set `VITE_API_URL` in your frontend hosting
+environment for production builds.
 
 Bookings hold a place for 24 hours while awaiting payment. The Telebirr and CBE
 checkout records a method, Birr amount, and reference for demonstration only; it
