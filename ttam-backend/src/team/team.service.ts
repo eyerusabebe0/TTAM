@@ -37,6 +37,12 @@ export class TeamService {
     return this.users.update(id, { status: UserStatus.APPROVED });
   }
 
+  async setManagerActive(id: number, isActive: boolean) {
+    const manager = await this.users.findByIdAndRole(id, Role.MANAGER);
+    if (!manager) throw new NotFoundException('Manager not found.');
+    return this.users.update(id, { isActive });
+  }
+
   async approveAgent(id: number) {
     const agent = await this.users.findByIdAndRole(id, Role.AGENT);
     if (!agent) throw new NotFoundException('Agent not found.');

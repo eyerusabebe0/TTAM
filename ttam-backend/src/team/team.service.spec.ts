@@ -17,6 +17,32 @@ describe('TeamService agent activation', () => {
     expect(users.update).toHaveBeenCalledWith(agent.id, { isActive });
   });
 
+  describe('TeamService manager activation', () => {
+    it.each([true, false])('sets manager active state to %s', async (isActive) => {
+      const manager = { id: 22, role: Role.MANAGER };
+      const users = {
+        findByIdAndRole: vi.fn().mockResolvedValue(manager),
+        update: vi.fn().mockResolvedValue({ ...manager, isActive }),
+      };
+      const service = new TeamService(users as never);
+
+      await expect(service.setManagerActive(manager.id, isActive)).resolves.toMatchObject({ id: manager.id, isActive });
+      expect(users.findByIdAndRole).toHaveBeenCalledWith(manager.id, Role.MANAGER);
+      expect(users.update).toHaveBeenCalledWith(manager.id, { isActive });
+    });
+
+    it('does not update a non-existent manager', async () => {
+      const users = {
+        findByIdAndRole: vi.fn().mockResolvedValue(null),
+        update: vi.fn(),
+      };
+      const service = new TeamService(users as never);
+
+      await expect(service.setManagerActive(22, false)).rejects.toThrow('Manager not found.');
+      expect(users.update).not.toHaveBeenCalled();
+    });
+  });
+
   it('does not update a non-existent agent', async () => {
     const users = {
       findByIdAndRole: vi.fn().mockResolvedValue(null),

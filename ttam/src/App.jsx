@@ -347,6 +347,18 @@ function App() {
       .catch((error) => setApiError(`Could not approve manager: ${error.message}`))
   }
 
+  async function setManagerActive(managerId, isActive) {
+    try {
+      const updated = await apiRequest(`/managers/${managerId}/${isActive ? 'activate' : 'deactivate'}`, {
+        token: sessionToken,
+        method: 'PATCH',
+      })
+      setTeam((current) => current.map((member) => member.id === managerId ? mapManager(updated) : member))
+    } catch (error) {
+      setApiError(`Could not update manager status: ${error.message}`)
+    }
+  }
+
   async function addManager(member) {
     try {
       const manager = await apiRequest('/managers', {
@@ -497,7 +509,7 @@ function App() {
     try {
       const updated = mapBooking(await apiRequest(`/bookings/${bookingId}/cancel`, { token: session.token, method: 'POST' }))
       setBookings((current) => current.map((booking) => booking.id === bookingId ? updated : booking))
-      return ''
+      return updated
     } catch (error) {
       return error.message || 'Could not cancel this booking.'
     }
@@ -592,7 +604,7 @@ function App() {
         onLogin={() => setAuthMode('login')}
         onSignup={() => setAuthMode('signup')}
         onLogout={() => { sessionStorage.removeItem('ttam-access-token'); setSessionToken(''); setCurrentUser(null); setBookings([]); setAgents([]); setNotificationTarget(null); setRole('client'); setShowJourneys(false) }}
-        onBrowse={() => setShowJourneys(true)}
+        onBrowse={() => { setShowJourneys(true); window.scrollTo({ top: 0, behavior: 'smooth' }) }}
         onDashboard={() => setShowJourneys(false)}
         notifications={notifications}
         onNotificationClick={openNotification}
@@ -603,7 +615,7 @@ function App() {
           {(role === 'client' || showJourneys) && <ClientPage {...shared} notificationTarget={notificationTarget} view={currentUser?.role === 'client' && !showJourneys ? 'dashboard' : 'browse'} signedIn={currentUser?.role === 'client'} currentUser={currentUser?.role === 'client' ? currentUser : null} onSignIn={() => setAuthMode('login')} onDashboard={() => setShowJourneys(false)} onBooking={addBooking} onPayment={recordPayment} onCancelBooking={cancelBooking} />}
           {!showJourneys && role === 'agent' && <AgentPage {...shared} notificationTarget={notificationTarget} currentEmail={currentUser?.email ?? ''} onRegisterSubAgent={registerSubAgent} />}
           {!showJourneys && role === 'manager' && <ManagerPage {...shared} notificationTarget={notificationTarget} currentPermissions={currentUser?.permissions} onApprove={approveAgent} onAgentCodeChange={updateAgentCode} onPermissionChange={toggleAgentPermission} onAgentActiveChange={setAgentActive} onBookingUpdate={updateBooking} onBookingApprove={approveBooking} />}
-          {!showJourneys && role === 'owner' && <OwnerPage {...shared} notificationTarget={notificationTarget} onAddTour={(tour) => saveTour(tour, 'POST')} onUpdateTour={(tour) => saveTour(tour, 'PATCH', tour.id)} onDeleteTour={deleteTour} onAddManager={addManager} onApproveManager={approveManager} onManagerPermissionChange={toggleTeamPermission} onBookingUpdate={updateBooking} />}
+          {!showJourneys && role === 'owner' && <OwnerPage {...shared} notificationTarget={notificationTarget} onAddTour={(tour) => saveTour(tour, 'POST')} onUpdateTour={(tour) => saveTour(tour, 'PATCH', tour.id)} onDeleteTour={deleteTour} onAddManager={addManager} onApproveManager={approveManager} onManagerActiveChange={setManagerActive} onManagerPermissionChange={toggleTeamPermission} onBookingUpdate={updateBooking} />}
         </div>
       </main>
       {authMode && <AuthDialog key={authMode} initialMode={authMode} onClose={() => setAuthMode('')} onLogin={login} onSignup={signup} />}
@@ -639,6 +651,7 @@ function mapAgent(agent) {
     permissions: agent.permissions || {},
     leads: Number(agent.leads || 0),
     revenue: Number(agent.revenue || 0),
+    commission: Number(agent.commission || 0),
   }
 }
 

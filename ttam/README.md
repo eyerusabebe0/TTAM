@@ -15,10 +15,11 @@ Bookings hold a place for 24 hours while awaiting payment. The Telebirr and CBE
 checkout records a method, Birr amount, and reference for demonstration only; it
 does not transfer or verify funds. Paid booking cancellations calculate an
 8% fee 1–5 days before departure, 4% at 6–10 days, and 2% at 11 or more days.
-An agent referral receives 1% of that cancellation fee. Refund amounts are
-recorded for staff reconciliation and are not transferred automatically.
-After staff return a refund outside the demo, a manager with payment access can
-record it as processed in the manager booking view.
+Agent commission is 10% of the amount recorded as paid, recalculated to 10% of
+the retained cancellation fee after the refund is due. Refund amounts remain
+due until staff issue them outside the demo and record that the refund was sent.
+Owners can set a journey image by URL or upload a JPG, PNG, or WebP file up to
+2 MB.
 Clients can download a PDF booking receipt after recording a demo payment.
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.

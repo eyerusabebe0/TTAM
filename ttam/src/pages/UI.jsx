@@ -1,5 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { jsPDF } from 'jspdf'
+import autoTable from 'jspdf-autotable'
+import * as XLSX from 'xlsx'
 import Reveal from '../pages/ScrollReveal.jsx'
 import { birr } from '../utils/currency.js'
 
@@ -143,9 +146,9 @@ export function BookingAnalytics({ bookings, columns, getKey, totalMode = 'trip'
   const [period, setPeriod] = useState('custom')
   const [sort, setSort] = useState('highest')
   const paymentTotal = (booking) => {
-    if (booking.paymentStatus !== 'Paid' && booking.paymentStatus !== 'Refunded') return 0
+    if (!['Paid', 'Refund due', 'Refunded'].includes(booking.paymentStatus)) return 0
     const amount = Number(booking.amountBirr || 0)
-    return Math.max(0, amount - (booking.paymentStatus === 'Refunded' ? Number(booking.refundAmount || 0) : 0))
+    return Math.max(0, amount - (booking.paymentStatus === 'Paid' ? 0 : Number(booking.refundAmount || 0)))
   }
   const bookingValue = (booking) => totalMode === 'payments' ? paymentTotal(booking) : Number(booking.price || 0)
   const filteredBookings = bookings.filter((booking) => {
@@ -156,9 +159,79 @@ export function BookingAnalytics({ bookings, columns, getKey, totalMode = 'trip'
     return (!fromDate || day >= fromDate) && (!toDate || day <= toDate)
   }).sort((first, second) => (sort === 'highest' ? bookingValue(second) - bookingValue(first) : bookingValue(first) - bookingValue(second)))
   const totalValue = filteredBookings.reduce((total, booking) => total + bookingValue(booking), 0)
-  const summaryFrom = fromDate || 'Any date'
-  const summaryTo = toDate || 'Any date'
+  const formatDate = (value, options = { month: 'short', day: 'numeric', year: 'numeric' }) => (
+    value ? new Date(`${value}T00:00:00`).toLocaleDateString(undefined, options) : ''
+  )
+  const periodLabel = period === 'month'
+    ? formatDate(fromDate, { month: 'long', year: 'numeric' })
+    : period === 'week'
+      ? `Week of ${formatDate(fromDate)} – ${formatDate(toDate)}`
+      : period === 'year'
+        ? fromDate.slice(0, 4)
+        : period === 'all'
+          ? 'All time'
+          : `${fromDate ? formatDate(fromDate) : 'Any date'} – ${toDate ? formatDate(toDate) : 'Any date'}`
+  const dailyTotals = new Map()
+  if (totalMode === 'payments' && period === 'week') {
+    filteredBookings.forEach((booking) => {
+      const amount = paymentTotal(booking)
+      if (!amount) return
+      const paymentDate = new Date(booking.paidAt || booking.createdAt || booking.journeyDate)
+      const day = [paymentDate.getFullYear(), String(paymentDate.getMonth() + 1).padStart(2, '0'), String(paymentDate.getDate()).padStart(2, '0')].join('-')
+      dailyTotals.set(day, (dailyTotals.get(day) || 0) + amount)
+    })
+  }
+  const rankedDays = [...dailyTotals.entries()].sort((first, second) => sort === 'highest' ? second[1] - first[1] : first[1] - second[1])
+  const leadingDay = rankedDays[0]
   const selectClass = 'min-h-11 rounded-xl border border-stone-300 bg-stone-50 px-3 outline-none transition focus:border-amber-500 focus:ring-4 focus:ring-amber-400/20'
+
+  function exportReport(format) {
+    const rows = filteredBookings.map((booking) => ({
+      client: booking.name,
+      email: booking.email || '',
+      journey: booking.tour || booking.place || '',
+      members: booking.members || 1,
+      referral: booking.agentId ? `${booking.agentName || 'Agent'} · ${booking.agentCode || 'code unavailable'}` : 'Direct booking',
+      date: booking.paidAt || booking.createdAt || booking.journeyDate || '',
+      tripValue: Number(booking.price || 0),
+      paymentStatus: booking.paymentStatus || '',
+      paymentAmount: Number(booking.amountBirr || 0),
+      refundAmount: Number(booking.refundAmount || 0),
+      commission: Number(booking.commission || 0),
+    }))
+
+    if (format === 'xlsx') {
+      const workbook = XLSX.utils.book_new()
+      const worksheet = XLSX.utils.json_to_sheet(rows)
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Report')
+      XLSX.writeFile(workbook, `ttam-report-${Date.now()}.xlsx`)
+      return
+    }
+
+    const doc = new jsPDF()
+    doc.setProperties({ title: 'TTAM report', subject: 'Operational report' })
+    doc.setFontSize(18)
+    doc.text('TTAM Operational Report', 14, 18)
+    doc.setFontSize(10)
+    doc.text(`Period: ${periodLabel}`, 14, 28)
+    doc.text(`Total: ${birr(totalValue)}`, 14, 34)
+    autoTable(doc, {
+      startY: 42,
+      head: [['Client', 'Journey', 'Date', 'Trip value', 'Payment', 'Commission']],
+      body: rows.map((row) => [
+        row.client,
+        row.journey,
+        row.date ? new Date(`${row.date}T00:00:00`).toLocaleDateString() : '—',
+        birr(row.tripValue),
+        `${row.paymentStatus} · ${birr(row.paymentAmount)}`,
+        birr(row.commission),
+      ]),
+      styles: { fontSize: 8 },
+      headStyles: { fillColor: [3, 31, 23], textColor: [255, 255, 255] },
+      alternateRowStyles: { fillColor: [250, 250, 249] },
+    })
+    doc.save(`ttam-report-${Date.now()}.pdf`)
+  }
 
   function selectPeriod(value) {
     setPeriod(value)
@@ -217,12 +290,115 @@ export function BookingAnalytics({ bookings, columns, getKey, totalMode = 'trip'
           </select>
         </label>
         <div className="flex flex-col justify-center border-t border-amber-300/40 pt-4 sm:col-span-2 lg:col-span-3">
-          <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-stone-500">{totalMode === 'payments' ? 'Net recorded payments' : 'Total trip value'} · {summaryFrom} to {summaryTo}</span>
+          <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-stone-500">{totalMode === 'payments' ? 'Net recorded payments' : 'Total trip value'} · {periodLabel}</span>
           <strong className="mt-1.5 font-serif text-4xl font-semibold text-emerald-950">{birr(totalValue)}</strong>
           <span className="text-xs text-stone-500">{filteredBookings.length} bookings</span>
+          {totalMode === 'payments' && period === 'week' && (
+            <span className="mt-2 text-sm font-semibold text-emerald-900">
+              {leadingDay
+                ? `${sort === 'highest' ? 'Highest' : 'Lowest'} payment day: ${formatDate(leadingDay[0], { weekday: 'long', month: 'long', day: 'numeric' })} · ${birr(leadingDay[1])}`
+                : 'No recorded payments this week.'}
+            </span>
+          )}
         </div>
       </div>
+      {filteredBookings.length ? (
+        <div className="flex flex-wrap justify-end gap-2">
+          <button type="button" className={BTN_OUTLINE} onClick={() => exportReport('xlsx')}>Export Excel</button>
+          <button type="button" className={BTN_OUTLINE} onClick={() => exportReport('pdf')}>Export PDF</button>
+        </div>
+      ) : null}
       {filteredBookings.length ? <DataList columns={columns} rows={filteredBookings} getKey={getKey} /> : <Empty>No bookings in this period.</Empty>}
+    </div>
+  )
+}
+
+export function SupportChat({ title, subtitle, participants = [] }) {
+  const [selectedId, setSelectedId] = useState(participants[0]?.id || 'owner')
+  const [draft, setDraft] = useState('')
+  const [messages, setMessages] = useState([
+    { id: 'system-1', from: 'owner', text: 'Operations desk ready. Please share any urgent issue or approval update.', time: 'Now' },
+    { id: 'system-2', from: 'manager', text: 'I can help with approval and customer communication.', time: 'Now' },
+  ])
+
+  useEffect(() => {
+    if (participants.length && !participants.some((participant) => participant.id === selectedId)) {
+      setSelectedId(participants[0].id)
+    }
+  }, [participants, selectedId])
+
+  const selected = participants.find((participant) => participant.id === selectedId) || participants[0]
+
+  function sendMessage(event) {
+    event.preventDefault()
+    const value = draft.trim()
+    if (!value) return
+    setMessages((current) => [
+      ...current,
+      { id: `${Date.now()}`, from: 'owner', text: value, time: 'Now' },
+    ])
+    setDraft('')
+  }
+
+  return (
+    <div className="mb-8 rounded-3xl border border-emerald-950/10 bg-white p-4 shadow-[0_12px_40px_-18px_rgba(3,31,23,.25)] sm:p-5">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <div className="text-[11px] font-bold uppercase tracking-[0.3em] text-amber-700">Live support</div>
+          <h3 className="mt-2 font-serif text-3xl font-semibold text-emerald-950">{title}</h3>
+        </div>
+        <span className="rounded-full bg-emerald-50 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.2em] text-emerald-800">Online</span>
+      </div>
+      <p className="mb-4 text-sm text-stone-600">{subtitle}</p>
+      <div className="grid gap-4 lg:grid-cols-[220px_minmax(0,1fr)]">
+        <div className="overflow-hidden rounded-2xl border border-stone-200 bg-stone-50">
+          <div className="border-b border-stone-200 px-3 py-3 text-[11px] font-bold uppercase tracking-[0.2em] text-stone-500">Contacts</div>
+          <div className="divide-y divide-stone-200">
+            {participants.map((participant) => (
+              <button
+                key={participant.id}
+                type="button"
+                onClick={() => setSelectedId(participant.id)}
+                className={`flex w-full items-center justify-between gap-3 px-3 py-3 text-left text-sm transition ${selectedId === participant.id ? 'bg-emerald-950 text-amber-200' : 'bg-transparent text-stone-700 hover:bg-white'}`}
+              >
+                <span className="font-semibold">{participant.name}</span>
+                <span className="text-[10px] uppercase tracking-[0.2em] opacity-70">{participant.role}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-stone-200 bg-stone-50 p-3">
+          <div className="mb-3 flex items-center justify-between gap-3 border-b border-stone-200 pb-3">
+            <div>
+              <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-stone-500">Connected to</div>
+              <strong className="block text-emerald-950">{selected?.name || 'Support team'}</strong>
+            </div>
+            <span className="rounded-full border border-emerald-200 bg-white px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.2em] text-emerald-700">Ready</span>
+          </div>
+
+          <div className="space-y-3">
+            {messages.map((message) => (
+              <div key={message.id} className={`flex ${message.from === 'owner' ? 'justify-end' : 'justify-start'}`}>
+                <div className={`max-w-[80%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${message.from === 'owner' ? 'bg-emerald-950 text-amber-100' : 'bg-white text-stone-700'}`}>
+                  <div>{message.text}</div>
+                  <div className={`mt-1 text-[10px] uppercase tracking-[0.12em] ${message.from === 'owner' ? 'text-amber-200/90' : 'text-stone-500'}`}>{message.time}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <form onSubmit={sendMessage} className="mt-4 flex gap-2">
+            <input
+              className="min-h-11 flex-1 rounded-full border border-stone-300 bg-white px-4 text-sm text-stone-900 outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-400/20"
+              value={draft}
+              onChange={(event) => setDraft(event.target.value)}
+              placeholder={`Message ${selected?.name || 'team'}...`}
+            />
+            <button type="submit" className={BTN}>Send</button>
+          </form>
+        </div>
+      </div>
     </div>
   )
 }

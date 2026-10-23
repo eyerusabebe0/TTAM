@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import Reveal from './ScrollReveal.jsx'
 import { birr } from '../utils/currency.js'
 import { EXCLUDED_FROM_JOURNEY_PRICE, INCLUDED_IN_JOURNEY_PRICE } from '../utils/journeyPricePolicy.js'
-import { Badge, BookingAnalytics, BTN, BTN_OUTLINE, Card, DataList, Empty, Field, Notice, PAGE, PageHeader, Perm, Section, Stat, Stats, Tabs } from './UI.jsx'
+import { Badge, BookingAnalytics, BTN, BTN_OUTLINE, Card, DataList, Empty, Field, Notice, PAGE, PageHeader, Perm, Section, Stat, Stats, SupportChat, Tabs } from './UI.jsx'
 
 const FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1501785888041-af3ef285b470?auto=format&fit=crop&w=1200&q=85'
 const blankTour = { name: '', place: '', days: '', journeyDate: '', startTime: '09:00', price: '', category: 'Culture', image: '', description: '' }
@@ -13,7 +13,7 @@ function localDateInputValue() {
   return new Date(now.getTime() - now.getTimezoneOffset() * 60_000).toISOString().slice(0, 10)
 }
 
-function OwnerPage({ tours, agents, team, bookings, managerPermissionOptions, notificationTarget, onAddTour, onUpdateTour, onDeleteTour, onAddManager, onApproveManager, onManagerPermissionChange, onBookingUpdate }) {
+function OwnerPage({ tours, agents, team, bookings, managerPermissionOptions, notificationTarget, onAddTour, onUpdateTour, onDeleteTour, onAddManager, onApproveManager, onManagerActiveChange, onManagerPermissionChange, onBookingUpdate }) {
   const [form, setForm] = useState(blankTour)
   const [managerForm, setManagerForm] = useState({ name: '', email: '', password: '', permissions: blankPermissions })
   const [showPassword, setShowPassword] = useState(false)
@@ -48,6 +48,30 @@ function OwnerPage({ tours, agents, team, bookings, managerPermissionOptions, no
     setForm(blankTour)
   }
 
+  function selectTourImage(event) {
+    const file = event.target.files?.[0]
+    if (!file) return
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      setMessage('Choose a JPG, PNG, or WebP image.')
+      event.target.value = ''
+      return
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      setMessage('Choose an image smaller than 2 MB.')
+      event.target.value = ''
+      return
+    }
+    const reader = new FileReader()
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        setForm((current) => ({ ...current, image: reader.result }))
+        setMessage('')
+      }
+    }
+    reader.onerror = () => setMessage('Could not read this image. Try another file.')
+    reader.readAsDataURL(file)
+  }
+
   async function deleteTour(tour) {
     if (!window.confirm(`Delete ${tour.name}?`)) return
     const error = await onDeleteTour(tour.id)
@@ -74,8 +98,8 @@ function OwnerPage({ tours, agents, team, bookings, managerPermissionOptions, no
   const approvedManagers = team.filter((manager) => manager.status === 'approved').length
   const toReview = team.filter((member) => member.status !== 'approved').length
   const netRecordedPayments = bookings.reduce((total, booking) => {
-    if (booking.paymentStatus !== 'Paid' && booking.paymentStatus !== 'Refunded') return total
-    return total + Math.max(0, Number(booking.amountBirr || 0) - (booking.paymentStatus === 'Refunded' ? Number(booking.refundAmount || 0) : 0))
+    if (!['Paid', 'Refund due', 'Refunded'].includes(booking.paymentStatus)) return total
+    return total + Math.max(0, Number(booking.amountBirr || 0) - (booking.paymentStatus === 'Paid' ? 0 : Number(booking.refundAmount || 0)))
   }, 0)
   const bookingAgents = [...new Map(bookings.filter((booking) => booking.agentId).map((booking) => [
     booking.agentId,
@@ -88,7 +112,7 @@ function OwnerPage({ tours, agents, team, bookings, managerPermissionOptions, no
 
   const managerColumns = [
     { label: 'Manager', render: (m) => <div className="min-w-0 text-left max-md:text-right"><strong className="block text-emerald-950">{m.name}</strong><span className="block break-all text-xs text-stone-500">{m.email}</span></div> },
-    { label: 'Status', render: (m) => <Badge tone={m.status === 'approved' ? 'green' : 'amber'}>{m.status === 'approved' ? 'Approved' : 'Pending approval'}</Badge> },
+    { label: 'Status', render: (m) => <Badge tone={m.isActive === false ? 'stone' : m.status === 'approved' ? 'green' : 'amber'}>{m.isActive === false ? 'Deactivated' : m.status === 'approved' ? 'Approved' : 'Pending approval'}</Badge> },
     {
       label: 'Permissions',
       render: (m) => (
@@ -99,7 +123,11 @@ function OwnerPage({ tours, agents, team, bookings, managerPermissionOptions, no
         </div>
       ),
     },
-    { label: 'Action', render: (m) => (m.status === 'approved' ? <Badge tone="green">Active</Badge> : <button className={`${BTN} min-h-10 px-4 py-2`} onClick={() => onApproveManager(m.id)}>Approve manager</button>) },
+    { label: 'Action', render: (m) => (
+      m.status !== 'approved'
+        ? <button className={`${BTN} min-h-10 px-4 py-2`} onClick={() => onApproveManager(m.id)}>Approve manager</button>
+        : <button className={BTN_OUTLINE} onClick={() => onManagerActiveChange(m.id, m.isActive === false)}>{m.isActive === false ? 'Activate manager' : 'Deactivate manager'}</button>
+    ) },
   ]
 
   return (
@@ -119,12 +147,21 @@ function OwnerPage({ tours, agents, team, bookings, managerPermissionOptions, no
       <div className={PAGE}>
         {message && <div className="pt-8"><Notice>{message}</Notice></div>}
         <div className="pt-6">
+          <SupportChat
+            title="Operations coordination"
+            subtitle="Air quick updates with hotel, agent, and manager teams before issues escalate."
+            participants={[
+              { id: 'owner', name: 'Owner', role: 'owner' },
+              ...team.filter((member) => member.status === 'approved' && member.isActive !== false).map((member) => ({ id: String(member.id), name: member.name, role: 'manager' })),
+              ...agents.filter((agent) => agent.status === 'approved' && agent.isActive !== false).map((agent) => ({ id: String(agent.id), name: agent.name, role: 'agent' })),
+            ]}
+          />
           <Tabs
             tabs={[
               { key: 'overview', label: 'Overview' },
               { key: 'tours', label: 'Journeys' },
               { key: 'team', label: 'Team & access' },
-              { key: 'bookings', label: 'Bookings & revenue' },
+              { key: 'bookings', label: 'Reports' },
             ]}
             value={page}
             onChange={(nextPage) => {
@@ -174,7 +211,9 @@ function OwnerPage({ tours, agents, team, bookings, managerPermissionOptions, no
                   <p className="mb-1 font-semibold text-emerald-950">Price covers: {INCLUDED_IN_JOURNEY_PRICE}</p>
                   <p className="m-0 text-stone-600">Not included: {EXCLUDED_FROM_JOURNEY_PRICE}.</p>
                 </div>
-                <Field id="tour-image" label="Image URL" optional type="url" value={form.image} onChange={(e) => setForm({ ...form, image: e.target.value })} placeholder="https://..." />
+                <Field id="tour-image" label="Image URL" optional type="url" value={form.image.startsWith('data:image/') ? '' : form.image} onChange={(e) => setForm({ ...form, image: e.target.value })} placeholder="https://..." />
+                <Field id="tour-image-file" label="Or choose an image file" optional type="file" accept="image/jpeg,image/png,image/webp" onChange={selectTourImage} />
+                {form.image.startsWith('data:image/') && <div className="flex items-center justify-between gap-3 sm:col-span-2"><span className="truncate text-xs text-stone-500">Image file selected</span><button className={BTN_OUTLINE} type="button" onClick={() => setForm({ ...form, image: '' })}>Remove image</button></div>}
                 <Field className="sm:col-span-2" id="tour-description" label="Description" as="textarea" rows="4" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Tell travelers what makes this experience worth taking." required />
                 <button className={`${BTN} min-h-12 sm:col-span-2`} type="submit">{form.id ? 'Save journey' : 'Publish journey'}</button>
                 {form.id && <button className={`${BTN_OUTLINE} sm:col-span-2`} type="button" onClick={() => setForm(blankTour)}>Cancel edit</button>}
@@ -282,7 +321,7 @@ function OwnerPage({ tours, agents, team, bookings, managerPermissionOptions, no
 
         {page === 'bookings' && (
         <div id="owner-bookings" className="scroll-mt-24">
-        <Section title="Booking performance" text="Filter by referral source or a specific agent. Payment details and refunds are demo records for staff to reconcile; no money is processed automatically." action={<div className="flex flex-wrap items-center gap-2"><select aria-label="Filter bookings by referral" className="min-h-10 rounded-full border border-stone-300 bg-white px-4 text-sm" value={bookingSource} onChange={(event) => { setBookingSource(event.target.value); if (event.target.value !== 'agent') setBookingAgent('all') }}><option value="all">All bookings</option><option value="agent">Agent referrals</option><option value="direct">Direct bookings</option></select>{bookingSource === 'agent' && <select aria-label="Filter bookings by agent" className="min-h-10 rounded-full border border-stone-300 bg-white px-4 text-sm" value={bookingAgent} onChange={(event) => setBookingAgent(event.target.value)}><option value="all">All agents</option>{bookingAgents.map((agent) => <option key={agent.id} value={agent.id}>{agent.name} · {agent.code || 'code unavailable'}</option>)}</select>}<Badge tone="amber">{filteredBookings.length} shown</Badge></div>}>
+        <Section title="Booking reports" text="Filter payments by referral, agent, and date. Payment entries and refund confirmations are recorded for reconciliation; transfers require your payment provider." action={<div className="flex flex-wrap items-center gap-2"><select aria-label="Filter bookings by referral" className="min-h-10 rounded-full border border-stone-300 bg-white px-4 text-sm" value={bookingSource} onChange={(event) => { setBookingSource(event.target.value); if (event.target.value !== 'agent') setBookingAgent('all') }}><option value="all">All bookings</option><option value="agent">Agent referrals</option><option value="direct">Direct bookings</option></select>{bookingSource === 'agent' && <select aria-label="Filter bookings by agent" className="min-h-10 rounded-full border border-stone-300 bg-white px-4 text-sm" value={bookingAgent} onChange={(event) => setBookingAgent(event.target.value)}><option value="all">All agents</option>{bookingAgents.map((agent) => <option key={agent.id} value={agent.id}>{agent.name} · {agent.code || 'code unavailable'}</option>)}</select>}<Badge tone="amber">{filteredBookings.length} shown</Badge></div>}>
           <BookingAnalytics bookings={filteredBookings} totalMode="payments" columns={[
             { label: 'Client', render: (booking) => <div><strong className="block text-emerald-950">{booking.name}</strong><span className="block text-xs text-stone-500">{booking.email}</span>{booking.phone && <span className="block text-xs text-stone-500">{booking.phone}</span>}</div> },
             { label: 'Journey', render: (booking) => booking.tour },
@@ -292,9 +331,8 @@ function OwnerPage({ tours, agents, team, bookings, managerPermissionOptions, no
             { label: 'Trip value', render: (booking) => birr(booking.price) },
             { label: 'Payment', render: (booking) => <div><Badge tone={booking.paymentStatus === 'Paid' || booking.paymentStatus === 'Refunded' ? 'green' : booking.paymentStatus === 'Awaiting payment' ? 'amber' : 'stone'}>{booking.paymentStatus}</Badge>{booking.paymentMethod && <span className="mt-1 block text-xs text-stone-500">{booking.paymentMethod} · {birr(booking.amountBirr)} · {booking.paymentReference}</span>}</div> },
             { label: 'Fee / refund', render: (booking) => booking.refundAmount > 0 ? `Fee ${birr(booking.cancellationFee)} · ${booking.paymentStatus === 'Refunded' ? 'Refunded' : 'Refund due'} ${birr(booking.refundAmount)}` : '—' },
-            { label: 'Agent cancellation share', render: (booking) => booking.agentCancellationShareBirr ? birr(booking.agentCancellationShareBirr) : '—' },
             { label: 'Agent commission (10%)', render: (booking) => booking.commission ? birr(booking.commission) : '—' },
-            { label: 'Action', render: (booking) => booking.paymentStatus === 'Refund due' ? <button className={BTN_OUTLINE} onClick={() => onBookingUpdate(booking.id, { paymentStatus: 'Refunded' })}>Record refund processed</button> : '—' },
+            { label: 'Action', render: (booking) => booking.paymentStatus === 'Refund due' ? <button className={BTN_OUTLINE} onClick={() => onBookingUpdate(booking.id, { paymentStatus: 'Refunded' })}>Record refund sent</button> : '—' },
           ]} getKey={(booking) => booking.id} />
         </Section>
         </div>

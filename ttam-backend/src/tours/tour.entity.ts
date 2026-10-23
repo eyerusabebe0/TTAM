@@ -20,7 +20,7 @@ export class Tour {
   @Column('int')
   price!: number;
 
-  @Column('varchar', { nullable: true })
+  @Column('text', { nullable: true })
   image?: string;
 
   @Column('text')

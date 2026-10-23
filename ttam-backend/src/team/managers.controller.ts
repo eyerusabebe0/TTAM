@@ -28,7 +28,16 @@ export class ManagersController {
   approve(@Param('id', ParseIntPipe) id: number) {
     return this.team.approveManager(id);
   }
-
+  @Patch(':id/deactivate')
+  @Access({ roles: [Role.OWNER] })
+  deactivate(@Param('id', ParseIntPipe) id: number) {
+    return this.team.setManagerActive(id, false);
+  }
+  @Patch(':id/activate')
+  @Access({ roles: [Role.OWNER] })
+  activate(@Param('id', ParseIntPipe) id: number) {
+    return this.team.setManagerActive(id, true);
+  }
   @Patch(':id/permissions')
   @Access({ roles: [Role.OWNER] })
   setPermission(@Param('id', ParseIntPipe) id: number, @Body() dto: TogglePermissionDto) {

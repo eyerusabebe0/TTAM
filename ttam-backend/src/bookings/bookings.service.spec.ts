@@ -80,7 +80,7 @@ describe('BookingsService creation', () => {
     expect(created.partySize).toBe(3);
     expect(created.agentId).toBe(agent.id);
     expect(created.agentCode).toBe(agent.code);
-    expect(created.commission).toBe(300);
+    expect(created.commission).toBe(0);
     expect(created.journeyDuration).toBe(tour.duration);
     expect(created.journeyStartTime).toBe(tour.startTime);
     expect(created.expiresAt?.getTime()).toBeGreaterThan(Date.now() + 23 * 60 * 60 * 1000);
@@ -183,7 +183,7 @@ describe('BookingsService visibility and payment dates', () => {
   });
 
   it('records the payment timestamp when a client payment is entered', async () => {
-    const booking = { id: 1, clientId: client.id, paymentStatus: PaymentStatus.AWAITING } as Booking;
+    const booking = { id: 1, clientId: client.id, agentId: 12, paymentStatus: PaymentStatus.AWAITING } as Booking;
     const builder = {
       update: vi.fn().mockReturnThis(),
       set: vi.fn().mockReturnThis(),
@@ -206,6 +206,7 @@ describe('BookingsService visibility and payment dates', () => {
     expect(builder.set).toHaveBeenCalledWith(expect.objectContaining({
       paymentStatus: PaymentStatus.PAID,
       paidAt: expect.any(Date),
+      commission: 1000,
     }));
   });
 });
@@ -228,13 +229,14 @@ describe('BookingsService cancellation', () => {
     expect(cancelled.paymentStatus).toBe(PaymentStatus.REFUND_DUE);
   });
 
-  it('awards an agent 1% of the cancellation fee', async () => {
+  it('recalculates agent commission to 10% of the retained cancellation fee', async () => {
     const { booking, service } = setupBooking(3, 12);
 
     const cancelled = await service.cancel(client, booking.id);
 
     expect(cancelled.cancellationFee).toBe(800);
-    expect(cancelled.agentCancellationShareBirr).toBe(8);
+    expect(cancelled.commission).toBe(80);
+    expect(cancelled.agentCancellationShareBirr).toBe(0);
   });
 
   it('does not issue a payment refund when an unpaid booking is cancelled', async () => {

@@ -56,7 +56,6 @@ export class BookingsService implements OnModuleInit, OnModuleDestroy {
     }
 
     const total = tour.price * dto.partySize;
-    const commission = agent ? Math.round(total * COMMISSION_RATE * 100) / 100 : 0;
     const now = new Date();
 
     return this.repo.save(
@@ -78,7 +77,7 @@ export class BookingsService implements OnModuleInit, OnModuleDestroy {
         agentId: agent?.id ?? null,
         agentCode: agent?.code ?? null,
         agentName: agent?.name ?? 'Direct booking',
-        commission,
+        commission: 0,
         expiresAt: new Date(now.getTime() + UNPAID_BOOKING_HOLD_MS),
       }),
     );
@@ -132,6 +131,8 @@ export class BookingsService implements OnModuleInit, OnModuleDestroy {
 
   async recordPayment(client: User, id: number, dto: RecordPaymentDto) {
     const now = new Date();
+    const booking = await this.getOrFail(id);
+    if (booking.clientId !== client.id) throw new NotFoundException('Booking not found.');
     const result = await this.repo
       .createQueryBuilder()
       .update(Booking)
@@ -141,6 +142,9 @@ export class BookingsService implements OnModuleInit, OnModuleDestroy {
         paymentReference: dto.paymentReference.trim(),
         paymentStatus: PaymentStatus.PAID,
         paidAt: now,
+        commission: booking.agentId
+          ? Math.round(dto.amountBirr * COMMISSION_RATE * 100) / 100
+          : 0,
       })
       .where('id = :id AND "clientId" = :clientId AND "paymentStatus" = :awaiting', {
         id,
@@ -151,8 +155,6 @@ export class BookingsService implements OnModuleInit, OnModuleDestroy {
       .execute();
 
     if (result.affected !== 1) {
-      const booking = await this.getOrFail(id);
-      if (booking.clientId !== client.id) throw new NotFoundException('Booking not found.');
       if (booking.paymentStatus === PaymentStatus.AWAITING && booking.expiresAt && booking.expiresAt <= now) {
         await this.expireBooking(id, now);
         throw new BadRequestException('The 24-hour payment window expired. Please book this journey again.');
@@ -185,10 +187,10 @@ export class BookingsService implements OnModuleInit, OnModuleDestroy {
       const refundRate = daysUntilJourney <= 5 ? 0.08 : daysUntilJourney <= 10 ? 0.04 : 0.02;
       booking.cancellationFee = Math.round(booking.amountBirr * refundRate * 100) / 100;
       booking.refundAmount = Math.round((booking.amountBirr - booking.cancellationFee) * 100) / 100;
-      booking.agentCancellationShareBirr = booking.agentId
-        ? Math.round(booking.cancellationFee * 0.01 * 100) / 100
+      booking.agentCancellationShareBirr = 0;
+      booking.commission = booking.agentId
+        ? Math.round(booking.cancellationFee * COMMISSION_RATE * 100) / 100
         : 0;
-      booking.commission = 0;
       booking.paymentStatus = PaymentStatus.REFUND_DUE;
     } else {
       booking.cancellationFee = 0;
@@ -212,16 +214,33 @@ export class BookingsService implements OnModuleInit, OnModuleDestroy {
     return this.repo.save(booking);
   }
 
-  // leads and revenue are calculated, never stored
+  // Leads and net paid revenue are calculated, never stored.
   async agentStats(agentId: number) {
     const row = await this.repo
       .createQueryBuilder('b')
       .select('COUNT(*)', 'leads')
-      .addSelect("COALESCE(SUM(CASE WHEN b.status NOT IN (:...inactive) THEN b.price ELSE 0 END), 0)", 'revenue')
+      .addSelect(
+        `COALESCE(SUM(CASE WHEN b."paymentStatus" IN (:...recognizedPayments)
+          THEN GREATEST(COALESCE(b."amountBirr", 0) - CASE WHEN b."paymentStatus" IN (:...refundPayments)
+            THEN COALESCE(b."refundAmount", 0) ELSE 0 END, 0)
+          ELSE 0 END), 0)`,
+        'revenue',
+      )
+      .addSelect(
+        'COALESCE(SUM(CASE WHEN b."paymentStatus" IN (:...recognizedPayments) THEN b.commission ELSE 0 END), 0)',
+        'commission',
+      )
       .where('b.agentId = :agentId', { agentId })
-      .setParameter('inactive', [BookingStatus.CANCELLED, BookingStatus.EXPIRED])
-      .getRawOne<{ leads: string; revenue: string }>();
-    return { leads: Number(row?.leads ?? 0), revenue: Number(row?.revenue ?? 0) };
+      .setParameters({
+        recognizedPayments: [PaymentStatus.PAID, PaymentStatus.REFUND_DUE, PaymentStatus.REFUNDED],
+        refundPayments: [PaymentStatus.REFUND_DUE, PaymentStatus.REFUNDED],
+      })
+      .getRawOne<{ leads: string; revenue: string; commission: string }>();
+    return {
+      leads: Number(row?.leads ?? 0),
+      revenue: Number(row?.revenue ?? 0),
+      commission: Number(row?.commission ?? 0),
+    };
   }
 
   private async getOrFail(id: number) {

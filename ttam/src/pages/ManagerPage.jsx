@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { birr } from '../utils/currency.js'
-import { Badge, BookingAnalytics, BTN, BTN_OUTLINE, DataList, Empty, Field, Modal, Notice, PAGE, PageHeader, Perm, Section, Stat, Stats, Tabs } from './UI.jsx'
+import { Badge, BookingAnalytics, BTN, BTN_OUTLINE, DataList, Empty, Field, Modal, Notice, PAGE, PageHeader, Perm, Section, Stat, Stats, SupportChat, Tabs } from './UI.jsx'
 
 function ManagerPage({ agents, bookings, permissionOptions, currentPermissions, notificationTarget, onApprove, onAgentCodeChange, onPermissionChange, onAgentActiveChange, onBookingUpdate, onBookingApprove }) {
   const defaultView = currentPermissions?.approveAgents ? 'agents' : currentPermissions?.viewBookings || currentPermissions?.approveBookings ? 'bookings' : 'locked'
@@ -69,7 +69,6 @@ function ManagerPage({ agents, bookings, permissionOptions, currentPermissions, 
     { label: 'Agent commission (10%)', render: (b) => (b.commission ? birr(b.commission) : '—') },
     { label: 'Status', render: (b) => <Badge tone={b.status === 'Approved' ? 'green' : b.status === 'Cancelled' || b.status === 'Expired' ? 'stone' : 'amber'}>{b.status}</Badge> },
     ...(canViewPayments ? [{ label: 'Payment / refund', render: (b) => <div><Badge tone={b.paymentStatus === 'Paid' || b.paymentStatus === 'Refunded' ? 'green' : b.paymentStatus === 'Awaiting payment' ? 'amber' : 'stone'}>{b.paymentStatus}</Badge>{b.paymentMethod && <span className="mt-1 block text-xs text-stone-500">{b.paymentMethod} · {birr(b.amountBirr)} · {b.paymentReference}</span>}{b.cancellationFee > 0 && <span className="mt-1 block text-xs text-stone-500">Fee {birr(b.cancellationFee)} · {b.paymentStatus === 'Refunded' ? 'refunded' : 'refund due'} {birr(b.refundAmount)}</span>}</div> }] : []),
-    { label: 'Agent cancellation share', render: (b) => b.agentCancellationShareBirr ? birr(b.agentCancellationShareBirr) : '—' },
     {
       label: 'Actions',
       render: (b) => (
@@ -80,7 +79,7 @@ function ManagerPage({ agents, bookings, permissionOptions, currentPermissions, 
             setTripTime(b.journeyStartTime || '')
             setApprovalError('')
           }}>Review & approve</button>}
-          {canViewPayments && b.paymentStatus === 'Refund due' && <button className={BTN_OUTLINE} onClick={() => onBookingUpdate(b.id, { paymentStatus: 'Refunded' })}>Record refund processed</button>}
+          {canViewPayments && b.paymentStatus === 'Refund due' && <button className={BTN_OUTLINE} onClick={() => onBookingUpdate(b.id, { paymentStatus: 'Refunded' })}>Record refund sent</button>}
         </div>
       ),
     },
@@ -190,6 +189,15 @@ function ManagerPage({ agents, bookings, permissionOptions, currentPermissions, 
       <div className={`${PAGE} pt-8`}>
         {tabs.length > 0 && <Tabs tabs={tabs} value={view} onChange={(key) => { setView(key); setMessage('') }} label="Manager tools" />}
         {message && <div className="mt-6"><Notice>{message}</Notice></div>}
+
+        <SupportChat
+          title="Agency support desk"
+          subtitle="Message agents directly for approvals, dispute handling, or travel guidance."
+          participants={[
+            { id: 'manager', name: 'Manager', role: 'manager' },
+            ...agents.filter((agent) => agent.status === 'approved' && agent.isActive !== false).map((agent) => ({ id: String(agent.id), name: agent.name, role: 'agent' })),
+          ]}
+        />
 
         {view === 'agents' && canApproveAgents && (
           <div id="manager-agent-applications" className="scroll-mt-24">

@@ -22,7 +22,6 @@ function AgentPage({ agents = [], bookings = [], currentEmail = '', notification
     { label: 'Members', render: (booking) => booking.members || 1 },
     { label: 'Value', render: (booking) => birr(booking.price) },
     { label: 'Commission (10%)', render: (booking) => booking.commission ? birr(booking.commission) : '—' },
-    { label: 'Cancellation share', render: (booking) => booking.agentCancellationShareBirr ? birr(booking.agentCancellationShareBirr) : '—' },
     { label: 'Status', render: (booking) => <Badge tone={booking.status === 'Approved' ? 'green' : 'amber'}>{booking.status}</Badge> },
   ]
 
@@ -40,10 +39,10 @@ function AgentPage({ agents = [], bookings = [], currentEmail = '', notification
       />
       <Stats>
         <Stat label="Referred requests" value={referrals.length} note="bookings" onClick={canViewBookings ? openReferrals : undefined} />
-        <Stat label="Trip value" value={birr(referrals.reduce((total, booking) => total + Number(booking.price || 0), 0))} delay={100} onClick={canViewBookings ? openReferrals : undefined} />
+        <Stat label="Net paid revenue" value={birr(agent?.revenue ?? referrals.reduce((total, booking) => total + Number(booking.price || 0), 0))} delay={100} onClick={canViewBookings ? openReferrals : undefined} />
         <Stat
           label="Commission (10%)"
-          value={birr(referrals.reduce((total, booking) => total + Number(booking.commission || 0), 0))}
+          value={birr(agent?.commission ?? referrals.reduce((total, booking) => total + Number(booking.commission || 0), 0))}
           note="earned"
           delay={200}
           className="col-span-2 sm:col-span-1"

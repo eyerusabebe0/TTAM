@@ -33,6 +33,7 @@ export class UsersService implements OnModuleInit {
       code: code.trim().toUpperCase(),
       role: Role.AGENT,
       status: UserStatus.APPROVED,
+      isActive: true,
     });
   }
 

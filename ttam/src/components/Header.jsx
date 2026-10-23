@@ -70,8 +70,8 @@ function Header({ currentUser, onLogin, onSignup, onLogout, onBrowse, onDashboar
       <div className={`mx-auto flex max-w-[1280px] items-center justify-between gap-4 px-4 transition-all duration-500 sm:px-8 lg:px-12 ${scrolled ? 'h-[64px] sm:h-[70px]' : 'h-[72px] sm:h-[84px]'}`}>
         <a
           className="group inline-flex min-w-0 items-center gap-3.5 no-underline"
-          href=""
-          onClick={() => { onBrowse(); close() }}
+          href="#top"
+          onClick={(event) => { event.preventDefault(); onBrowse(); close() }}
           aria-label="Ask Tour and Travel home"
         >
           <span className="brand-flight relative grid size-11 shrink-0 place-items-center overflow-hidden rounded-full border border-amber-300/50 bg-gradient-to-br from-amber-300/20 to-amber-500/5 shadow-inner shadow-amber-300/10 transition duration-500 group-hover:border-amber-300 group-hover:shadow-amber-300/30">

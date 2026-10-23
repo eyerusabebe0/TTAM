@@ -148,6 +148,18 @@ function ClientPage({ tours = [], bookings = [], signedIn, currentUser, notifica
     setCustomer((current) => ({ ...current, agentCode: '' }))
   }
 
+  async function cancelClientBooking(booking) {
+    if (!window.confirm(`Cancel booking ${booking.reference}?`)) return
+    const result = await onCancelBooking?.(booking.id)
+    if (typeof result === 'string') {
+      setConfirmation(result)
+    } else if (result?.paymentStatus === 'Refund due') {
+      setConfirmation(`Booking cancelled. A refund of ${birr(result.refundAmount)} is due after the ${birr(result.cancellationFee)} cancellation fee. Staff must send the refund through the payment provider; it is not automatic.`)
+    } else {
+      setConfirmation('Booking cancelled. No refund is due for this unpaid booking.')
+    }
+  }
+
   const myBookings = currentUser
     ? bookings.filter((b) => (
       (b.email || '').toLowerCase() === (currentUser.email || '').toLowerCase()
@@ -345,17 +357,13 @@ function ClientPage({ tours = [], bookings = [], signedIn, currentUser, notifica
                             <td className="px-4 py-4">{booking.agentCode || 'Direct'}</td>
                             <td className="px-4 py-4">
                               <Badge tone={booking.status === 'Approved' ? 'green' : booking.status === 'Cancelled' || booking.status === 'Expired' ? 'stone' : 'amber'}>{clientBookingStatus(booking)}</Badge>
-                              {booking.refundAmount > 0 && <span className="mt-1 block text-xs text-stone-500">Refund {booking.paymentStatus === 'Refunded' ? 'processed' : 'due'}: {birr(booking.refundAmount)}</span>}
+                              {booking.refundAmount > 0 && <span className="mt-1 block text-xs text-stone-500">Refund {booking.paymentStatus === 'Refunded' ? 'sent' : 'due'}: {birr(booking.refundAmount)} · sent outside this demo</span>}
                             </td>
                             <td className="px-4 py-4">
                               <div className="flex flex-wrap gap-2">
                                 {booking.paymentStatus === 'Awaiting payment' && <span className="max-w-48 text-xs font-medium text-amber-800">Pay within 24 hours · by {new Date(booking.expiresAt).toLocaleString()}</span>}
                                 {booking.status === 'Approved' && <button className={BTN_OUTLINE} onClick={() => downloadConfirmationPdf(booking)}>Download confirmation</button>}
-                                {booking.status !== 'Cancelled' && booking.status !== 'Expired' && <button className={BTN_OUTLINE} onClick={async () => {
-                                  if (!window.confirm(`Cancel booking ${booking.reference}?`)) return
-                                  const error = await onCancelBooking?.(booking.id)
-                                  if (error) setConfirmation(error)
-                                }}>Cancel booking</button>}
+                                {booking.status !== 'Cancelled' && booking.status !== 'Expired' && <button className={BTN_OUTLINE} onClick={() => cancelClientBooking(booking)}>Cancel booking</button>}
                               </div>
                             </td>
                           </tr>
@@ -374,15 +382,11 @@ function ClientPage({ tours = [], bookings = [], signedIn, currentUser, notifica
                         <p className="m-0 text-sm text-stone-500">{booking.place}</p>
                         <p className="mb-0 mt-2 text-sm text-stone-600">{booking.members} member(s) · {birr(booking.price)} total · {booking.agentCode || 'Direct booking'}</p>
                         <p className="mb-0 mt-1 text-sm text-stone-600">Payment: {booking.paymentStatus}{booking.paymentMethod ? ` · ${booking.paymentMethod} · ${birr(booking.amountBirr)}` : ''}</p>
-                        {booking.refundAmount > 0 && <p className="mb-0 mt-1 text-sm text-stone-600">Refund {booking.paymentStatus === 'Refunded' ? 'processed' : 'to process'}: {birr(booking.refundAmount)} (fee {birr(booking.cancellationFee)})</p>}
+                        {booking.refundAmount > 0 && <p className="mb-0 mt-1 text-sm text-stone-600">Refund {booking.paymentStatus === 'Refunded' ? 'sent' : 'due'}: {birr(booking.refundAmount)} (fee {birr(booking.cancellationFee)}). Refunds are sent outside this demo.</p>}
                         <div className="mt-3 flex flex-wrap gap-2">
                           {booking.paymentStatus === 'Awaiting payment' && <span className="self-center text-xs font-medium text-amber-800">Pay within 24 hours · by {new Date(booking.expiresAt).toLocaleString()}</span>}
                           {booking.status === 'Approved' && <button className={BTN_OUTLINE} onClick={() => downloadConfirmationPdf(booking)}>Download confirmation</button>}
-                          {booking.status !== 'Cancelled' && booking.status !== 'Expired' && <button className={BTN_OUTLINE} onClick={async () => {
-                            if (!window.confirm(`Cancel booking ${booking.reference}?`)) return
-                            const error = await onCancelBooking?.(booking.id)
-                            if (error) setConfirmation(error)
-                          }}>Cancel booking</button>}
+                          {booking.status !== 'Cancelled' && booking.status !== 'Expired' && <button className={BTN_OUTLINE} onClick={() => cancelClientBooking(booking)}>Cancel booking</button>}
                         </div>
                       </div>
                     ))}

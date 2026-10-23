@@ -1,4 +1,4 @@
-import { IsDateString, IsIn, IsInt, IsNotEmpty, IsOptional, IsString, IsUrl, Matches, Min } from 'class-validator';
+import { IsDateString, IsIn, IsInt, IsNotEmpty, IsOptional, IsString, Matches, MaxLength, Min } from 'class-validator';
 
 export class CreateTourDto {
   @IsString()
@@ -21,7 +21,9 @@ export class CreateTourDto {
   price!: number;
 
   @IsOptional()
-  @IsUrl()
+  @IsString()
+  @MaxLength(3_000_000)
+  @Matches(/^(https?:\/\/[^\s<>"']+|data:image\/(?:jpeg|png|webp);base64,[A-Za-z0-9+/]+={0,2})$/i)
   image?: string;
 
   @IsString()
