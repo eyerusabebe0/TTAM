@@ -4,13 +4,26 @@ function Footer() {
       <div aria-hidden="true" className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-400/70 to-transparent" />
       <div className="mx-auto grid max-w-[1280px] gap-10 px-4 py-12 sm:px-8 md:grid-cols-[1.4fr_1fr_1fr] lg:px-12">
         <div>
-          <div className="flex items-center gap-3">
-            <svg className="size-9 text-amber-400" viewBox="0 0 36 36" fill="none" aria-hidden="true">
-              <path d="M18 3.5 32.5 12v12L18 32.5 3.5 24V12L18 3.5Z" stroke="currentColor" strokeWidth="1.6" />
-              <path d="M11 22.5c3.6-8.2 8.5-9.8 14.5-10.5-2.4 7.2-6.3 11.2-14.5 10.5Z" fill="currentColor" />
-            </svg>
-            <span className="font-serif text-xl font-semibold text-white">Ask Tour and Travel</span>
-          </div>
+          <a
+            className="group inline-flex min-w-0 items-center gap-3.5 no-underline"
+            href=""
+            aria-label="Ask Tour and Travel home"
+          >
+            <span className="brand-flight relative grid size-11 shrink-0 place-items-center overflow-hidden rounded-full border border-amber-300/50 bg-gradient-to-br from-amber-300/20 to-amber-500/5 shadow-inner shadow-amber-300/10 transition duration-500 group-hover:border-amber-300 group-hover:shadow-amber-300/30">
+              <svg className="brand-flight-plane size-6 text-amber-300" viewBox="0 0 36 36" fill="none" aria-hidden="true">
+                <path d="m4 17 27-11-8 25-5-10-10-4Z" fill="currentColor" />
+                <path d="m18 21 13-15" stroke="#031f17" strokeWidth="1.4" />
+                <path d="M5 26h8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" opacity=".7" />
+                <path d="M2 30h7" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" opacity=".45" />
+              </svg>
+            </span>
+            <span className="min-w-0 truncate font-serif text-xl font-semibold leading-none tracking-wide text-white sm:text-[1.7rem]">
+              Ask Tour and Travel
+              <small className="mt-1.5 block truncate font-sans text-[9.5px] font-semibold uppercase tracking-[0.32em] text-amber-300/90 sm:text-[10px]">
+                Journeys in Ethiopia
+              </small>
+            </span>
+          </a>
           <p className="mt-4 max-w-sm text-sm leading-relaxed">
             Local knowledge, thoughtful journeys. Every trip is arranged by people who live in the places you visit.
           </p>
