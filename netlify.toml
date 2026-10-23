@@ -1,0 +1,9 @@
+[build]
+  base = "ttam"             # Tell Netlify your React code lives in the "ttam" folder
+  publish = "dist"          # Netlify will look inside ttam/dist after building
+  command = "npm run build" # Runs 'npm run build' inside the ttam folder
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
