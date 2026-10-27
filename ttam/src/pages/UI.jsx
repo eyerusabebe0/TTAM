@@ -400,7 +400,6 @@ export function SupportChat({ currentUser, token }) {
             <div className="mb-3 pr-10 sm:mb-5">
               <p className="m-0 text-[10px] font-bold uppercase tracking-[0.2em] text-amber-700 sm:text-[11px] sm:tracking-[0.25em]">Workspace inbox</p>
               <h2 id="messages-title" className="mb-0 mt-1 font-serif text-2xl font-semibold text-emerald-950 sm:mt-2 sm:text-3xl">Messages</h2>
-              <p className="mb-0 mt-1 text-xs text-stone-600 sm:mt-2 sm:text-sm">Owner ↔ manager · Manager ↔ agent</p>
             </div>
             {error && <p role="alert" className="mb-3 rounded-xl border border-red-200 bg-red-50 px-3.5 py-2.5 text-[13px] text-red-800 sm:mb-4 sm:px-4 sm:py-3 sm:text-sm">{error}</p>}
             <div className="grid gap-3 sm:gap-4 md:grid-cols-[220px_minmax(0,1fr)]">

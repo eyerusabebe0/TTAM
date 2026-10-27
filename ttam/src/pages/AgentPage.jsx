@@ -42,7 +42,6 @@ function AgentPage({ agents = [], bookings = [], currentEmail = '', currentUser,
       />
       <Stats>
         <Stat label="Referred requests" value={referrals.length} note="bookings" onClick={canViewBookings ? openReferrals : undefined} />
-        <Stat label="Net paid revenue" value={birr(agent?.revenue ?? referrals.reduce((total, booking) => total + Number(booking.price || 0), 0))} delay={100} onClick={canViewBookings ? openReferrals : undefined} />
         <Stat
           label="Commission (10%)"
           value={birr(agent?.commission ?? referrals.reduce((total, booking) => total + Number(booking.commission || 0), 0))}

@@ -13,13 +13,24 @@ export class MessagesService {
 
   async contacts(user: User) {
     this.assertAccountActive(user);
-    const role = user.role === Role.OWNER
-      ? Role.MANAGER
-      : user.role === Role.MANAGER
-        ? Role.AGENT
-        : Role.MANAGER;
+    if (user.role === Role.MANAGER) {
+      const [agents, owners] = await Promise.all([
+        this.users.find({
+          where: { role: Role.AGENT, status: UserStatus.APPROVED, isActive: true },
+          select: { id: true, name: true, role: true },
+          order: { name: 'ASC' },
+        }),
+        this.users.find({
+          where: { role: Role.OWNER },
+          select: { id: true, name: true, role: true },
+          order: { name: 'ASC' },
+        }),
+      ]);
+      return [...agents, ...owners].map(({ id, name, role: contactRole }) => ({ id, name, role: contactRole }));
+    }
+
     const eligibleUsers = await this.users.find({
-      where: { role, status: UserStatus.APPROVED, isActive: true },
+      where: { role: Role.MANAGER, status: UserStatus.APPROVED, isActive: true },
       select: { id: true, name: true, role: true },
       order: { name: 'ASC' },
     });
@@ -54,8 +65,12 @@ export class MessagesService {
     if (!Number.isSafeInteger(peerId) || peerId === user.id) {
       throw new NotFoundException('Contact not found.');
     }
-    const peer = await this.users.findOneBy({ id: peerId, isActive: true, status: UserStatus.APPROVED });
-    if (!peer || !this.isAllowedPair(user.role, peer.role)) {
+    const peer = await this.users.findOneBy({ id: peerId });
+    if (
+      !peer ||
+      !this.isAllowedPair(user.role, peer.role) ||
+      (peer.role !== Role.OWNER && (peer.isActive === false || peer.status !== UserStatus.APPROVED))
+    ) {
       throw new NotFoundException('Contact not found.');
     }
     return peer;
