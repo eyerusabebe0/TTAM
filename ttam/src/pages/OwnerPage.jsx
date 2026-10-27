@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import Reveal from './ScrollReveal.jsx'
 import { birr } from '../utils/currency.js'
 import { EXCLUDED_FROM_JOURNEY_PRICE, INCLUDED_IN_JOURNEY_PRICE } from '../utils/journeyPricePolicy.js'
-import { Badge, BookingAnalytics, BTN, BTN_OUTLINE, Card, DataList, Empty, Field, Notice, PAGE, PageHeader, Perm, Section, Stat, Stats, SupportChat, Tabs } from './UI.jsx'
+import { Badge, BookingAnalytics, BTN, BTN_OUTLINE, Card, DataList, Empty, Field, Notice, PAGE, PageHeader, Perm, Section, Stat, Stats, Tabs } from './UI.jsx'
 
 const FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1501785888041-af3ef285b470?auto=format&fit=crop&w=1200&q=85'
 const blankTour = { name: '', place: '', days: '', journeyDate: '', startTime: '09:00', price: '', category: 'Culture', image: '', description: '' }
@@ -147,7 +147,6 @@ function OwnerPage({ tours, agents, team, bookings, managerPermissionOptions, cu
       <div className={PAGE}>
         {message && <div className="pt-8"><Notice>{message}</Notice></div>}
         <div className="pt-6">
-          <SupportChat currentUser={currentUser} token={token} />
           <Tabs
             tabs={[
               { key: 'overview', label: 'Overview' },

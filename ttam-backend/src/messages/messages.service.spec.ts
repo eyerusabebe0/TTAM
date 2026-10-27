@@ -23,26 +23,35 @@ const agent = { id: 3, role: Role.AGENT, status: UserStatus.APPROVED, isActive: 
 const owner = { id: 1, role: Role.OWNER, status: UserStatus.APPROVED, isActive: true } as User;
 
 describe('MessagesService', () => {
-  it('lists the owner and agent as available contacts for a manager', async () => {
-    const ownerContact = { id: owner.id, name: 'Jane Owner', role: owner.role, status: UserStatus.PENDING, isActive: false } as User;
+  it('lists only agents as available contacts for a manager', async () => {
     const agentContact = { id: agent.id, name: 'Alex Agent', role: agent.role, status: UserStatus.APPROVED, isActive: true } as User;
     const users = {
       findOneBy: vi.fn(),
-      find: vi.fn()
-        .mockResolvedValueOnce([agentContact])
-        .mockResolvedValueOnce([ownerContact]),
+      find: vi.fn().mockResolvedValue([agentContact]),
     };
     const service = new MessagesService({ create: vi.fn(), save: vi.fn() } as never, users as never);
 
     await expect(service.contacts(manager)).resolves.toEqual([
       { id: agentContact.id, name: agentContact.name, role: agentContact.role },
-      { id: ownerContact.id, name: ownerContact.name, role: ownerContact.role },
     ]);
-    expect(users.find).toHaveBeenNthCalledWith(1, expect.objectContaining({
+    expect(users.find).toHaveBeenCalledWith(expect.objectContaining({
       where: { role: Role.AGENT, status: UserStatus.APPROVED, isActive: true },
     }));
-    expect(users.find).toHaveBeenNthCalledWith(2, expect.objectContaining({
-      where: { role: Role.OWNER },
+  });
+
+  it('lists only managers as available contacts for an agent', async () => {
+    const managerContact = { id: manager.id, name: 'Sam Manager', role: manager.role, status: UserStatus.APPROVED, isActive: true } as User;
+    const users = {
+      findOneBy: vi.fn(),
+      find: vi.fn().mockResolvedValue([managerContact]),
+    };
+    const service = new MessagesService({ create: vi.fn(), save: vi.fn() } as never, users as never);
+
+    await expect(service.contacts(agent)).resolves.toEqual([
+      { id: managerContact.id, name: managerContact.name, role: managerContact.role },
+    ]);
+    expect(users.find).toHaveBeenCalledWith(expect.objectContaining({
+      where: { role: Role.MANAGER, status: UserStatus.APPROVED, isActive: true },
     }));
   });
 
@@ -54,25 +63,31 @@ describe('MessagesService', () => {
     expect(savedMessages.save).toHaveBeenCalledOnce();
   });
 
-  it('allows owner-to-manager conversations', async () => {
+  it('allows agent-to-manager conversations', async () => {
     const { service } = createService(manager);
 
-    await expect(service.send(owner, manager.id, 'Please review the weekly report.'))
-      .resolves.toMatchObject({ senderId: owner.id, recipientId: manager.id });
+    await expect(service.send(agent, manager.id, 'Please review this booking.'))
+      .resolves.toMatchObject({ senderId: agent.id, recipientId: manager.id });
   });
 
-  it('allows manager-to-owner conversations', async () => {
-    const inactiveOwner = { ...owner, status: UserStatus.PENDING, isActive: false };
-    const { service } = createService(inactiveOwner);
+  it('rejects owner-to-manager conversations', async () => {
+    const { service, savedMessages } = createService(manager);
 
-    await expect(service.send(manager, owner.id, 'Please approve this budget.'))
-      .resolves.toMatchObject({ senderId: manager.id, recipientId: owner.id });
+    await expect(service.send(owner, manager.id, 'Please review the weekly report.')).rejects.toThrow('Your account cannot use workspace messages.');
+    expect(savedMessages.save).not.toHaveBeenCalled();
+  });
+
+  it('rejects manager-to-owner conversations', async () => {
+    const { service, savedMessages } = createService(owner);
+
+    await expect(service.send(manager, owner.id, 'Please approve this budget.')).rejects.toThrow('Contact not found.');
+    expect(savedMessages.save).not.toHaveBeenCalled();
   });
 
   it('rejects owner-to-agent conversations', async () => {
     const { service, savedMessages } = createService(agent);
 
-    await expect(service.send(owner, agent.id, 'Not an allowed route.')).rejects.toThrow('Contact not found.');
+    await expect(service.send(owner, agent.id, 'Not an allowed route.')).rejects.toThrow('Your account cannot use workspace messages.');
     expect(savedMessages.save).not.toHaveBeenCalled();
   });
 });

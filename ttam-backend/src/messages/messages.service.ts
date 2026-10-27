@@ -13,24 +13,11 @@ export class MessagesService {
 
   async contacts(user: User) {
     this.assertAccountActive(user);
-    if (user.role === Role.MANAGER) {
-      const [agents, owners] = await Promise.all([
-        this.users.find({
-          where: { role: Role.AGENT, status: UserStatus.APPROVED, isActive: true },
-          select: { id: true, name: true, role: true },
-          order: { name: 'ASC' },
-        }),
-        this.users.find({
-          where: { role: Role.OWNER },
-          select: { id: true, name: true, role: true },
-          order: { name: 'ASC' },
-        }),
-      ]);
-      return [...agents, ...owners].map(({ id, name, role: contactRole }) => ({ id, name, role: contactRole }));
-    }
+    if (user.role === Role.OWNER) return [];
 
+    const eligibleRole = user.role === Role.MANAGER ? Role.AGENT : Role.MANAGER;
     const eligibleUsers = await this.users.find({
-      where: { role: Role.MANAGER, status: UserStatus.APPROVED, isActive: true },
+      where: { role: eligibleRole, status: UserStatus.APPROVED, isActive: true },
       select: { id: true, name: true, role: true },
       order: { name: 'ASC' },
     });
@@ -80,16 +67,14 @@ export class MessagesService {
     if (
       user.isActive === false ||
       (user.role !== Role.OWNER && user.status !== UserStatus.APPROVED) ||
-      ![Role.OWNER, Role.MANAGER, Role.AGENT].includes(user.role)
+      ![Role.MANAGER, Role.AGENT].includes(user.role)
     ) {
       throw new ForbiddenException('Your account cannot use workspace messages.');
     }
   }
 
   private isAllowedPair(first: Role, second: Role) {
-    return (first === Role.OWNER && second === Role.MANAGER)
-      || (first === Role.MANAGER && second === Role.OWNER)
-      || (first === Role.MANAGER && second === Role.AGENT)
+    return (first === Role.MANAGER && second === Role.AGENT)
       || (first === Role.AGENT && second === Role.MANAGER);
   }
 }

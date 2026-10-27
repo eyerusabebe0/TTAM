@@ -18,26 +18,27 @@ import { AppService } from './app.service.js';
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (config: ConfigService) => {
-        const databaseUrl = config.getOrThrow<string>('DATABASE_URL').trim();
-        const databaseUrlWithSsl = new URL(databaseUrl);
+        const databaseUrl = config.get<string>('DATABASE_URL')?.trim();
+        const databaseUrlWithSsl = new URL(databaseUrl || 'postgres://postgres:postgres@localhost:5432/postgres');
+
+        databaseUrlWithSsl.searchParams.delete('channel_binding');
+        databaseUrlWithSsl.searchParams.delete('uselibpqcompat');
+
         if (!databaseUrlWithSsl.searchParams.has('sslmode')) {
           databaseUrlWithSsl.searchParams.set('sslmode', 'require');
         }
-        if (
-          databaseUrlWithSsl.searchParams.get('sslmode')?.toLowerCase() === 'require' &&
-          !databaseUrlWithSsl.searchParams.has('uselibpqcompat')
-        ) {
-          databaseUrlWithSsl.searchParams.set('uselibpqcompat', 'true');
-        }
+
+        const isTlsRequired = databaseUrlWithSsl.hostname.includes('neon.tech') || databaseUrlWithSsl.hostname.includes('render.com') || databaseUrlWithSsl.hostname.includes('supabase.co');
+        const sslEnabled = isTlsRequired || databaseUrlWithSsl.searchParams.get('sslmode')?.toLowerCase() === 'require';
 
         return {
           type: 'postgres' as const,
           url: databaseUrlWithSsl.toString(),
           autoLoadEntities: true,
           synchronize: true,
-          ssl: { rejectUnauthorized: false },
+          ssl: sslEnabled ? { rejectUnauthorized: false } : false,
           extra: {
-            ssl: { rejectUnauthorized: false },
+            ...(sslEnabled ? { ssl: { rejectUnauthorized: false } } : {}),
             connectionTimeoutMillis: 30000,
           },
           connectTimeoutMS: 30000,

@@ -38,6 +38,10 @@ function Footer() {
         <div className="min-w-0">
           <h3 className="m-0 font-serif text-base font-semibold text-white sm:text-lg">Based in</h3>
           <p className="m-0 mt-2.5 text-[13px] leading-relaxed sm:mt-3 sm:text-sm">Addis Ababa, Ethiopia<br />Journeys across the highlands, lakes and desert.</p>
+          <p className="mt-3 text-[13px] font-medium text-amber-200 sm:text-sm">
+            <span className="text-emerald-100/80">Contact:</span>{' '}
+            <a href="tel:+291123456787" className="text-amber-300 underline-offset-2 transition hover:text-amber-200 hover:underline">+291123456787</a>
+          </p>
         </div>
       </div>
       <div className="border-t border-white/10">
