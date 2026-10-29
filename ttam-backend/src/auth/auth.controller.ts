@@ -16,7 +16,7 @@ export class AuthController {
   }
 
   @Post('login')
-  @HttpCode(200) // POST returns 201 by default; login creates nothing, so 200 is correct
+  @HttpCode(200) 
   login(@Body() dto: LoginDto) {
     return this.auth.login(dto);
   }

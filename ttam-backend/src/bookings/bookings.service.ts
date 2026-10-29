@@ -184,12 +184,23 @@ export class BookingsService implements OnModuleInit, OnModuleDestroy {
       if (daysUntilJourney < 1) {
         throw new BadRequestException('Bookings cannot be cancelled on or after the journey date.');
       }
-      const refundRate = daysUntilJourney <= 5 ? 0.08 : daysUntilJourney <= 10 ? 0.04 : 0.02;
-      booking.cancellationFee = Math.round(booking.amountBirr * refundRate * 100) / 100;
+      let customerFeeRate = 0.02;
+      let agentShareRate = 0.005;
+      if (daysUntilJourney <= 5) {
+        customerFeeRate = 0.08;
+        agentShareRate = 0.02;
+      } else if (daysUntilJourney <= 10) {
+        customerFeeRate = 0.04;
+        agentShareRate = 0.01;
+      }
+
+      booking.cancellationFee = Math.round(booking.amountBirr * customerFeeRate * 100) / 100;
       booking.refundAmount = Math.round((booking.amountBirr - booking.cancellationFee) * 100) / 100;
-      booking.agentCancellationShareBirr = 0;
+      booking.agentCancellationShareBirr = booking.agentId
+        ? Math.round(booking.amountBirr * agentShareRate * 100) / 100
+        : 0;
       booking.commission = booking.agentId
-        ? Math.round(booking.cancellationFee * COMMISSION_RATE * 100) / 100
+        ? Math.round(booking.amountBirr * agentShareRate * 100) / 100
         : 0;
       booking.paymentStatus = PaymentStatus.REFUND_DUE;
     } else {

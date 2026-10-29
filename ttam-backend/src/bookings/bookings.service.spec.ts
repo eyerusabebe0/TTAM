@@ -56,7 +56,8 @@ describe('BookingsService creation', () => {
       duration: '5 days · Small group',
       startTime: '08:30',
     };
-    const agent = { id: 12, name: 'Referral Agent', code: 'AGENT12' } as User;
+    const agentCode = 'AGENT12';
+    const agent = { id: 12, name: 'Referral Agent', code: agentCode } as User;
     const repo = {
       create: vi.fn((booking: Partial<Booking>) => booking),
       save: vi.fn(async (booking: Partial<Booking>) => booking),
@@ -72,14 +73,14 @@ describe('BookingsService creation', () => {
       partySize: 3,
       name: 'Traveler',
       email: 'TRAVELER@example.com',
-      agentCode: agent.code,
+      agentCode,
     });
 
     expect(created.pricePerPerson).toBe(1000);
     expect(created.price).toBe(3000);
     expect(created.partySize).toBe(3);
     expect(created.agentId).toBe(agent.id);
-    expect(created.agentCode).toBe(agent.code);
+    expect(created.agentCode).toBe(agentCode);
     expect(created.commission).toBe(0);
     expect(created.journeyDuration).toBe(tour.duration);
     expect(created.journeyStartTime).toBe(tour.startTime);
